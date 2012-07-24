@@ -1,0 +1,32 @@
+Running CCNX-Trace
+------------------
+
+o In a collection of ccn nodes, all the machines should run the trace_server. The client expresses 
+interest for /trace/<namespace>. The trace_server asks local ccnd to forward all 
+trace interests to it so that it can handle them properly. Therefore if any node is  
+not running the trace_server, local ccnd will drop the packet.
+
+o At the client machine, both trace_server and trace_client has to be run. Without the server,
+the client would timeout.
+
+
+Configuring a testbed for ccnx-trace
+-------------------------------------
+
+o Run trace_server on each node. This program does not require any argument. This can be
+also run in the background.
+
+    $ trace_server &
+
+o At the client, run the trace_client. It takes two arguments, -u for the URI to trace to and
+-t for timeout. The usage can be seen using
+
+    $ trace_client -h 
+
+
+o Note that ccnx has a default timeout value of 4 secs for an interest packet.
+So if the -t value is 12 secs and the client is nor receiving any answer, the client would retry 
+three times before giving up.
+
+o Make sure you have a route to the content you are trying to trace to. For example, for tracing to
+/ndn/csu/netsec/index, you should have a FIB entry that points to /ndn/csu/netsec/index

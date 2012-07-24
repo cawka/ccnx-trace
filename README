@@ -5,7 +5,7 @@
   -----------
   The CCNx Trace is a tool with traceroute like functionality for CCNx. The CCNx
   code can be obtained at www.ccnx.org/. This tools is written for
-  troubleshooting problems in CCNx environment. This tool can trace to a certain
+  troubleshooting problems in a content centric network. This tool can trace to a certain
   CCN URI, e.g, ccnx:/ndn/csu/netsec/index. This is an initial version of the
   tool and would continue to improve.
 

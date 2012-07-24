@@ -12,10 +12,9 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <ifaddrs.h>
-#include "node_id.h"
 
-#define PROGRAM    "trace_client"
-#define VERSION    "0.1.1"
+#include "node_id.h"
+#include "version.h"
 
 //#define DEBUG
 #define TRACE_PREFIX "/trace"
@@ -104,11 +103,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 		return CCN_UPCALL_RESULT_REEXPRESS;
 
 	case CCN_UPCALL_CONTENT_UNVERIFIED: 
-        fprintf(stderr, "%s: Error - Could not verify content\n\n", PROGRAM);
+        fprintf(stderr, "%s: Error - Could not verify content\n\n", CLI_PROGRAM);
         return CCN_UPCALL_RESULT_ERR;
 
 	case CCN_UPCALL_CONTENT_BAD:
-        fprintf(stderr, "%s: Error - Bad content\n\n", PROGRAM);
+        fprintf(stderr, "%s: Error - Bad content\n\n", CLI_PROGRAM);
 		return CCN_UPCALL_RESULT_ERR;
 
     case CCN_UPCALL_INTEREST:
@@ -127,8 +126,8 @@ return(0);
 void usage(void)
 {
     ///prints the usage and exits
-    printf("%s version %s \n", PROGRAM, VERSION);
-    printf("%s [-h] [-V] [-u URI] [-t TIMEOUT]\n\n", PROGRAM);
+    printf("%s version %s \n", CLI_PROGRAM, CLI_VERSION);
+    printf("%s [-h] [-V] [-u URI] [-t TIMEOUT]\n\n", CLI_PROGRAM);
 
     printf("  -h             print this help and exit\n");
     printf("  -V             print version and exit\n\n");
@@ -148,7 +147,7 @@ int main(int argc, char *argv[])
     //check if user supplied uri to trace to, read the arguments and check them
     if(argc < 5)
     {
-        fprintf(stderr, "%s: Error - Not enough arguments\n\n", PROGRAM);
+        fprintf(stderr, "%s: Error - Not enough arguments\n\n", CLI_PROGRAM);
         usage();
     }
 
@@ -160,7 +159,7 @@ int main(int argc, char *argv[])
             usage();
             break;
         case 'V':
-            printf("%s %s\n\n", PROGRAM, VERSION);
+            printf("%s %s\n\n", CLI_PROGRAM, CLI_VERSION);
             exit(0);
         case 'u':
             URI = optarg;
@@ -170,16 +169,16 @@ int main(int argc, char *argv[])
             res = sscanf(timeout, "%d", &timeout_ms);
             if(res == 0)
             {
-                fprintf(stderr, "%s: Error - Could not convert timeout value to int %s\n\n", PROGRAM, timeout);
+                fprintf(stderr, "%s: Error - Could not convert timeout value to int %s\n\n", CLI_PROGRAM, timeout);
                 usage();
             }
             break;
         case ':':
-            fprintf(stderr, "%s: Error - Option `%c' needs a value\n\n", PROGRAM, optopt);
+            fprintf(stderr, "%s: Error - Option `%c' needs a value\n\n", CLI_PROGRAM, optopt);
             usage();
             break;
         case '?':
-            fprintf(stderr, "%s: Error - No such option: `%c'\n\n", PROGRAM, optopt);
+            fprintf(stderr, "%s: Error - No such option: `%c'\n\n", CLI_PROGRAM, optopt);
             usage();
             break;
         }

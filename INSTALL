@@ -1,0 +1,33 @@
+ SOURCE CODE
+ -----------
+ Source code can be checked out from ccnx-trace repository.
+
+ $ git clone https://code.google.com/p/ccnx-trace/
+
+ This would create a directory named ccnx-trace
+
+
+ INSTALLATION OVERVIEW
+ ---------------------------
+ It is recommended to install both server and client. However, they can be installed individually.
+
+    $ cd ccnx-trace
+    $ make all
+    $ sudo make install
+
+
+
+ UNINSTALLATION
+ --------------
+ The program can be uninstalled using make uninstall.
+
+    $ cd ccnx-trace
+    $ sudo make uninstall
+
+            
+ NOTES
+ -----
+
+ o Make sure you have ccnx and openssl-devel installed. Otherwise the installation will fail.
+
+ o Please report installation issues at http://code.google.com/p/ccnx-trace/issues/

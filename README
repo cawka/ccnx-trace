@@ -21,8 +21,13 @@
     
   -------------    
   Installation
-  ------------ 
+  ------------- 
   Please see the file called INSTALL.  
+
+  -------------
+  Documentation
+  -------------
+  For running the tool on your machine or testbed, refer to docs/manual.
 
   ----------
   Licensing

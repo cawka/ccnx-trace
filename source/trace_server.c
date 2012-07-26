@@ -770,6 +770,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     free(new_interest_name);
 
                 }
+
+                //free remote ip list, we don't need it 
+                for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
+                {
+                    free(remote_ips[remote_ip_index]);
+                } 
+                
+
                 #ifdef DEBUG
                     printf("\n\n");
                     for (i = 0; i < fwd_list_index; i++)

@@ -262,6 +262,7 @@ char* swap_random(const unsigned char *interest_name, int interest_random_comp, 
     sprintf(new_rand_comp, "%d", rand_comp);
     char *slash ="/";
     char *trace = "/trace";
+    ////////////////////free at callling function/////////////
     *new_interest_name = malloc(strlen(trace) + strlen((const char *)interest_name) + strlen(new_rand_comp) + 1);
     if(new_interest_name == NULL)
     {

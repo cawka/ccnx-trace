@@ -198,13 +198,12 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
 
     int iter1 = 0;
     int return_ip_index = 0;
-    char *command2 = (char *) malloc(1024);
-    char fib_entry[1024];
+    char command2[1024] = {0};
+    char fib_entry[1024] = {0};
 
     //for each face, find the matching ip address
     for (iter1 = 0; iter1 < number_faces; iter1++) 
     {
-        memset(command2, 0, 1024);
         sprintf(command2, "%s%s%s", "ccndstatus |grep -w 'face: ", face[iter1], "'|awk -F 'remote:' '{print $2}' |awk -F ':' '{print $1}'|tr -s '\\n'|head -n 1");
 
         //execute command
@@ -219,6 +218,8 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
         while (fgets(fib_entry, 80, fp2) != NULL)
         {
             fib_entry[strlen(fib_entry)-1] = '\0';
+
+        //////////////////////cleanup at calling function/////////////////
             return_ips[return_ip_index] = malloc(strlen(fib_entry)+1);
             if(return_ips[return_ip_index]== NULL)
             {

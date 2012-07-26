@@ -136,6 +136,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
         }
 
        //read buffer and get the first match
+        //////////////free(faces[face_index]); at calling function/////////////
         while (fgets(readbuf, 1024, fp) != NULL)
         {
             readbuf[strlen(readbuf)-1] = '\0';
@@ -144,10 +145,13 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             strncpy(faces[face_index], readbuf, strlen(readbuf));
             face_index++;
         }
+        fclose(fp);
 
         //if faces are found, we are done, no need to match shorter prefixes, search_str is the prefix
         if(face_index > 0) 
         {
+
+            /////////////////remove longest match in calling fn///////////////////
             *longest_match = malloc(sizeof(char) * strlen(search_str));
             if(longest_match== NULL)
             {
@@ -886,7 +890,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 		printf("Unexpected response\n");
 		return CCN_UPCALL_RESULT_ERR;
     }
-    return CCN_UPCALL_RESULT_OK;
+    return CCN_UPCALL_FINAL;
 }
 
 void usage(void)

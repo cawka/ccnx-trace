@@ -89,6 +89,9 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     #ifdef DEBUG
         printf("Interest name %s\n", *interest_name);
     #endif
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&uri);
+    free(uri_string);
     return(0);
 }
 

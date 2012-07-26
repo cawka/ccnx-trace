@@ -51,6 +51,7 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
 
     //get the full interest name
     int res;
+
     struct ccn_charbuf *name = ccn_charbuf_create();
     res = ccn_charbuf_append(name, interest_msg + pi->offset[CCN_PI_B_Name],
             pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name]);
@@ -59,10 +60,14 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     #ifdef DEBUG
         printf("uri = %s\n", ccn_charbuf_as_string(uri));
     #endif
+
+    //copy the name over to a string, set the reset pointer to string
     char *uri_string = malloc(strlen(ccn_charbuf_as_string(uri))+1);
+    char *reset_uri_string;
     strcpy(uri_string, ccn_charbuf_as_string(uri));
 
     //remove the ccnx:/trace from the beginning of interest name
+    reset_uri_string = uri_string;
     uri_string = uri_string + strlen("ccnx:/trace");
 
     //get the last component, copy to int
@@ -89,6 +94,7 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     #ifdef DEBUG
         printf("Interest name %s\n", *interest_name);
     #endif
+    uri_string = reset_uri_string;
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&uri);
     free(uri_string);

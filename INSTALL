@@ -12,6 +12,7 @@
  It is recommended to install both server and client. However, they can be installed individually.
 
     $ cd ccnx-trace/source
+    $ ./configure
     $ make all
     $ sudo make install
 

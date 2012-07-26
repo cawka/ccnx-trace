@@ -2,7 +2,6 @@ CC = gcc
 CFLAGS = -g -Wall -Wpointer-arith -Wreturn-type -Wstrict-prototypes
 LIBS = -lccn -lcrypto
 
-
 PROGRAM_CL = trace_client
 PROGRAM_SR = trace_server
 

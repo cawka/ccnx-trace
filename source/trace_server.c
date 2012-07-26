@@ -244,6 +244,9 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
 
 
 char* swap_random(const unsigned char *interest_name, int interest_random_comp, char **new_interest_name, int *new_interest_random_comp)
+
+
+
 {
     //-----------------------------------------------------------------------//
     ///Takes an interest name, swaps the random component for forwarding.
@@ -263,7 +266,7 @@ char* swap_random(const unsigned char *interest_name, int interest_random_comp, 
     char *slash ="/";
     char *trace = "/trace";
     ////////////////////free at callling function/////////////
-    *new_interest_name = malloc(strlen(trace) + strlen((const char *)interest_name) + strlen(new_rand_comp) + 1);
+    *new_interest_name = malloc(strlen(trace) + strlen((const char *)interest_name) + strlen(new_rand_comp) + strlen(slash) + 1);
     if(new_interest_name == NULL)
     {
         fprintf(stderr, "Can not allocate memory for new_interest_name\n");

@@ -553,6 +553,7 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     }
     //we are done here
     res = ccn_disconnect(ccn);
+    ccn_destroy(&ccn);
     ccn_charbuf_destroy(&resultbuf);
     ccn_charbuf_destroy(&ccnb);
     return(0);
@@ -571,7 +572,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     /// handle them as appropriate
     //-----------------------------------------------------------------------//
 
-    struct ccn_charbuf *data = ccn_charbuf_create();
+    struct ccn_charbuf *data_packet = ccn_charbuf_create();
     int res = 0;
     char *faces[100]; //char* of faces
     char *remote_ips[100]; //char *remote ips
@@ -604,8 +605,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     int iter = 0;
     size_t buffer_len = 0;
 
-    int interest_random_comp_length = 0;
-    char *interest_random_comp_string = NULL;
+    char interest_random_comp_string[128] = {0};
 
     int processed[10000]; //duplicate removal
     int flag  = 0;
@@ -628,12 +628,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 #ifdef DEBUG
         printf("Interest name %s, random is %d\n", interest_name, interest_random_comp);
 #endif
-        interest_random_comp_string = malloc(sizeof(char) * interest_random_comp_length + 1);
-        if (interest_random_comp_string == NULL)
-        {
-            fprintf(stderr, "Can not allocate memory for interest_random_comp_string\n");
-            exit(1);
-        }
         sprintf(interest_random_comp_string, "%d", interest_random_comp);
 
         //check for duplicate messages
@@ -889,16 +883,17 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         buffer = reset_buffer;
 
         //send data packet
-        construct_trace_response(info->h, data, info->interest_ccnb, info->pi, buffer, buffer_len);
-        res = ccn_put(info->h, data->buf, data->length);
+        construct_trace_response(info->h, data_packet, info->interest_ccnb, info->pi, buffer, buffer_len);
+        res = ccn_put(info->h, data_packet->buf, data_packet->length);
         printf("\n");
 
         //free all the allocate memory
+        ccn_charbuf_destroy(&data_packet);
+        ccn_charbuf_destroy(&name_fwd);
         free((void*)interest_name);
         free((void *)longest_prefix);
         free(buffer);
         free(new_interest_random_comp_str);
-        free(interest_random_comp_string);
         return CCN_UPCALL_FINAL;
         break;
 
@@ -938,11 +933,11 @@ int main(int argc, char **argv)
 {
 
     //no argument necessary
-    if (argc != 1)
-    {
-        usage();
-        exit(1);
-    }
+//    if (argc != 1)
+//    {
+//        usage();
+//        exit(1);
+//    }
 
     //seed the random
     srand ((unsigned int)time (NULL)*getpid());
@@ -994,7 +989,6 @@ int main(int argc, char **argv)
 
     //listen infinitely
     res = ccn_run(ccn, -1);
-    printf("res run%d\n", res);
 
     //cleanup
     ccn_destroy(&ccn);

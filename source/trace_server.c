@@ -933,11 +933,11 @@ int main(int argc, char **argv)
 {
 
     //no argument necessary
-//    if (argc != 1)
-//    {
-//        usage();
-//        exit(1);
-//    }
+    if (argc != 1)
+    {
+        usage();
+        exit(1);
+    }
 
     //seed the random
     srand ((unsigned int)time (NULL)*getpid());

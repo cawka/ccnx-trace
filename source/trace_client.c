@@ -51,8 +51,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     switch (kind) 
     {
     case CCN_UPCALL_FINAL:
+        free(selfp);
         return CCN_UPCALL_RESULT_OK;    
-        break;
 
     case CCN_UPCALL_CONTENT:  
         printf("received content\n");
@@ -97,7 +97,10 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         //free the memory we allocated
         free(reply.message_length);
         free(reply.fwd_message);
-        return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+        
+        //we are done, bail
+//        return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);        
+        return(CCN_UPCALL_RESULT_OK);        
         break;
 
     //default timeout in ccn is 4 secs, number of retries are decided by timeout argument
@@ -131,7 +134,7 @@ void usage(void)
 {
     ///prints the usage and exits
     printf("%s version %s \n", CLI_PROGRAM, CLI_VERSION);
-    printf("%s [-h] [-V] [-u URI] [-t TIMEOUT]\n\n", CLI_PROGRAM);
+    printf("%s [-h] [-V] -u URI -t TIMEOUT(ms)\n\n", CLI_PROGRAM);
 
     printf("  -h             print this help and exit\n");
     printf("  -V             print version and exit\n\n");
@@ -201,7 +204,7 @@ int main(int argc, char *argv[])
     # endif
 
     //get the length of user provided URI
-    int argv_length = strlen(URI);
+    size_t argv_length = strlen(URI);
 
     //check first six chars for ccnx:/, if present, skip them
     int skip = 0;
@@ -300,7 +303,6 @@ int main(int argc, char *argv[])
 	}
 	
 	//there is a memory leak for incoming, figure a way to free ccn_closure
-//    free(incoming);
 	free(TRACE_URI);
     ccn_charbuf_destroy(&ccnb);
     ccn_destroy(&ccn);

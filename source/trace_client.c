@@ -60,7 +60,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         
         //get the content from packet
 		res = ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, &ptr, &length);
-        printf("res: %d", res);
+        if (res < 0)
+        {
+            printf("Can not get value from content. res: %d", res);
+            exit(1);
+        }
         
         //copy number of messages from packet
         memcpy(&reply.num_message, ptr, sizeof(uint32_t));

@@ -809,7 +809,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 //process and store the replies in a data packet
                 return_data.num_message = fwd_list_index;
 //                return_data.message_length =  malloc(return_data.num_message);
-                return_data.message_length =  (uint32_t*) calloc (i,sizeof(uint32_t));
+                return_data.message_length =  (uint32_t*) calloc (return_data.num_message,sizeof(uint32_t));
 
                 if (return_data.message_length == NULL)
                 {

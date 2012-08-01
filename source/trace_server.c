@@ -110,7 +110,6 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
 {
 
     //-----------------------------------------------------------------------//
-
     ///Takes the interest name, fills in matching faces, number of faces
     ///and the longest match
     //-----------------------------------------------------------------------//
@@ -122,17 +121,23 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
     char *command = (char *) malloc(strlen((const char *)interest_name)+100);
     char readbuf[1024];
     int face_index=0;
+    int default_rt_flag = 0;
 
     //make a duplicate of interest name
     char *search_str;
-    if ((search_str = malloc (strlen((const char *)interest_name) + 1)) != NULL)
-        strcpy (search_str, (const char*)interest_name);
+
+    //allocate two extra bytes, one for newline, one for ccnx:/ for default
+    if ((search_str = malloc (strlen((const char *)interest_name) + strlen("ccnx:") + 2)) != NULL)
+    {
+        //strcpy (search_str, (const char*)interest_name);
+        sprintf (search_str, "%s%s", "ccnx:", (const char*)interest_name);
+    }
     int len_search_str = strlen((const char *)search_str);
 
     //parse the ccndstatus for match
     while (len_search_str > 0)
     {
-        sprintf(command, "%s%s%s", "ccndstatus|grep -w ", search_str, "|awk -F 'face:' '{print $2}' |awk '{print $1}'|sort|uniq");
+        sprintf(command, "%s%s%s", "ccndstatus|grep -w '", search_str, " face'|awk -F 'face:' '{print $2}' |awk '{print $1}'|sort|uniq");
 
 #ifdef DEBUG
         printf("%s\n", command);
@@ -161,9 +166,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
         //if faces are found, we are done, no need to match shorter prefixes, search_str is the prefix
         if (face_index > 0)
         {
-
-            /////////////////remove longest match in calling fn///////////////////
-            *longest_match = malloc(sizeof(char) * strlen(search_str));
+            *longest_match = malloc(sizeof(char) * strlen(search_str) + 1);
             if (longest_match== NULL)
             {
                 fprintf(stderr, "Can not allocate memory for longest_match\n");
@@ -179,7 +182,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
 
         //else, remove last component and retry
 #ifdef DEBUG
-        printf("\nstring before%s\n", search_str);
+        printf("\nstring before removal of last comp: %s\n", search_str);
 #endif
 
         char *last_component = strrchr(search_str, '/');
@@ -191,8 +194,18 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             *last_component = '\0';
         }
 #ifdef DEBUG
-        printf("string after %s length  %Zu\n", search_str, strlen(search_str));
+        printf("string after removal: %s length: %Zu\n", search_str, strlen(search_str));
 #endif
+        if (strcmp(search_str, "ccnx:") == 0 && default_rt_flag == 0)
+        {
+            printf("here\n");
+            sprintf(search_str, "%s", "ccnx:/");
+            default_rt_flag = 1;
+        }
+        else if (strcmp(search_str, "ccnx:") == 0)
+            break;
+
+
         len_search_str = strlen(search_str);
     }
 
@@ -219,7 +232,7 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
     //for each face, find the matching ip address
     for (iter1 = 0; iter1 < number_faces; iter1++)
     {
-        sprintf(command2, "%s%s%s", "ccndstatus |grep -w 'face: ", face[iter1], "'|awk -F 'remote:' '{print $2}' |awk -F ':' '{print $1}'|tr -s '\\n'|head -n 1");
+        sprintf(command2, "%s%s%s", "ccndstatus |grep -w 'pending'|grep -w 'face: ", face[iter1], "'|awk -F 'remote:' '{print $2}' |awk -F ':' '{print $1}'|tr -s '\\n'|head -n 1");
 
         //execute command
         FILE *fp2 = popen(command2, "r");
@@ -411,6 +424,7 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     int i;
 
     struct data mymsg;
+    mymsg.num_message = 0;
 
     res = ccn_name_from_uri(name_fwd, new_interest_name);
     if (res < 0)
@@ -423,13 +437,13 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     printf("expressing interest for %s\n", new_interest_name);
 #endif
 
-    struct ccn_charbuf *ccnb = ccn_charbuf_create();
-    if (ccnb == NULL)
+    struct ccn_charbuf *ccnb_fwd = ccn_charbuf_create();
+    if (ccnb_fwd == NULL)
     {
         fprintf(stderr, "Can not allocate memory for interest\n");
         exit(1);
     }
-    res = ccn_name_from_uri(ccnb, (const char *)new_interest_name);
+    res = ccn_name_from_uri(ccnb_fwd, (const char *)new_interest_name);
     if (res == -1)
     {
         fprintf(stderr, "Failed to assign name to interest");
@@ -437,15 +451,15 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     }
 
     //create the ccn handle
-    struct ccn *ccn = ccn_create();
-    if (ccn == NULL)
+    struct ccn *ccn_fwd = ccn_create();
+    if (ccn_fwd == NULL)
     {
         fprintf(stderr, "Can not create ccn handle\n");
         exit(1);
     }
 
     //connect to ccnd
-    res = ccn_connect(ccn, NULL);
+    res = ccn_connect(ccn_fwd, NULL);
     if (res == -1)
     {
         fprintf(stderr, "Could not connect to ccnd... exiting\n");
@@ -469,7 +483,7 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     int timeout_ms = 8000;
 
     //express interest
-    res = ccn_get(ccn, ccnb, NULL, timeout_ms, resultbuf, &pcobuf, NULL, 0);
+    res = ccn_get(ccn_fwd, ccnb_fwd, NULL, timeout_ms, resultbuf, &pcobuf, NULL, 0);
     if (res == -1)
     {
         fprintf(stderr, "Did not receive answer for trace to %s\n", new_interest_name);
@@ -552,10 +566,9 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
 
     }
     //we are done here
-    res = ccn_disconnect(ccn);
-    ccn_destroy(&ccn);
+    ccn_destroy(&ccn_fwd);
     ccn_charbuf_destroy(&resultbuf);
-    ccn_charbuf_destroy(&ccnb);
+    ccn_charbuf_destroy(&ccnb_fwd);
     return(0);
 }
 
@@ -595,10 +608,10 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     int num_reply=0;
 
     struct data return_data;
+    return_data.num_message = 0;
 
     int new_interest_random_comp = 0;
-    int new_interest_random_comp_length = 0;
-    char *new_interest_random_comp_str = NULL;
+    char new_interest_random_comp_str[128] = {0};
 
     unsigned char *buffer = NULL;
     unsigned char *reset_buffer = NULL;
@@ -633,13 +646,10 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         //check for duplicate messages
         for (iter = 0; iter < processed_index; iter++)
         {
-#ifdef DEBUG
-            printf("processed value = %d\n",processed[iter]);
-#endif
             if (processed[iter] == interest_random_comp)
             {
 #ifdef DEBUG
-                printf("Duplicate\n");
+                printf("duplicate interest, random value = %d\n",processed[iter]);
 #endif
                 flag = 1;
                 break;
@@ -651,12 +661,10 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             break;
         processed[processed_index] = interest_random_comp;
         processed_index += 1;
-#ifdef DEBUG
-        printf("processed index %d\n", processed_index);
-#endif
 
         //get the matching faces for this interest
         res = get_faces(interest_name, faces, &number_faces, &longest_prefix);
+
 #ifdef DEBUG
         for (i=0; i <number_faces; i++)
         {
@@ -750,7 +758,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 {
                     //swap the random string
                     swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp);
-                    new_interest_random_comp_str = malloc(sizeof(char) * new_interest_random_comp_length);
                     sprintf(new_interest_random_comp_str, "%d", new_interest_random_comp);
 #ifdef DEBUG
                     printf("new interest name %s\n", new_interest_name);
@@ -801,7 +808,9 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 
                 //process and store the replies in a data packet
                 return_data.num_message = fwd_list_index;
-                return_data.message_length =  malloc(return_data.num_message);
+//                return_data.message_length =  malloc(return_data.num_message);
+                return_data.message_length =  (uint32_t*) calloc (i,sizeof(uint32_t));
+
                 if (return_data.message_length == NULL)
                 {
                     fprintf(stderr, "Can not allocate memory for reply message leangth\n");
@@ -812,9 +821,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 return_data.fwd_message = malloc(sizeof(char *) * return_data.num_message);
                 for (i = 0; i < fwd_list_index; i++)
                 {
+                    printf("i=%d\n", i);
+                    return_data.message_length[i] = strlen(node_id) + strlen(":FWD ")+ strlen(fwd_reply[i]) + 1;
 
-                    return_data.message_length[i] = strlen(node_id)+1 + strlen(":FWD ")+ strlen(fwd_reply[i])  ;
-                    return_data.fwd_message[i] = malloc(return_data.message_length[i]);
+                    printf("return_data len %d\n", return_data.message_length[i]);
+                    return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen(":FWD ")+ strlen(fwd_reply[i]) + 1);
                     if (return_data.fwd_message[i] == NULL)
                     {
                         fprintf(stderr, "Can not allocate memory for reply message number %d\n", i);
@@ -856,10 +867,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         reset_buffer = buffer;
 
         //copy num_fwd_interest
-        memcpy(buffer, &return_data.num_message, sizeof(int));
+        memcpy(buffer, &return_data.num_message, sizeof(uint32_t));
 
         buffer += sizeof(uint32_t);
         buffer_len += 1*sizeof(uint32_t);
+
         //copy the lengths
         for (iter = 0; iter<return_data.num_message; iter++)
         {
@@ -874,9 +886,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             memcpy(buffer, return_data.fwd_message[iter], return_data.message_length[iter]);
             buffer += return_data.message_length[iter];
             buffer_len += return_data.message_length[iter];
-#ifdef DEBUG
-            printf("buffer len%Zu\n", buffer_len);
-#endif
         }
 
         //reset pointer
@@ -893,7 +902,10 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         free((void*)interest_name);
         free((void *)longest_prefix);
         free(buffer);
-        free(new_interest_random_comp_str);
+        for (i=0; i < number_faces; i++)
+        {
+            free(faces[i]);
+        }
         return CCN_UPCALL_FINAL;
         break;
 
@@ -988,7 +1000,7 @@ int main(int argc, char **argv)
     }
 
     //listen infinitely
-    res = ccn_run(ccn, -1);
+    res = ccn_run(ccn, 8000);
 
     //cleanup
     ccn_destroy(&ccn);

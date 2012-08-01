@@ -821,10 +821,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 return_data.fwd_message = malloc(sizeof(char *) * return_data.num_message);
                 for (i = 0; i < fwd_list_index; i++)
                 {
-                    printf("i=%d\n", i);
                     return_data.message_length[i] = strlen(node_id) + strlen(":FWD ")+ strlen(fwd_reply[i]) + 1;
-
-                    printf("return_data len %d\n", return_data.message_length[i]);
                     return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen(":FWD ")+ strlen(fwd_reply[i]) + 1);
                     if (return_data.fwd_message[i] == NULL)
                     {

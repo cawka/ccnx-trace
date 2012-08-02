@@ -7,7 +7,6 @@ PROGRAM_SR = trace_server
 
 INSTALL_DIR=/usr/local/bin
 
-
 all: $(PROGRAM_CL) $(PROGRAM_SR)
 
 trace_client: trace_client.o

@@ -233,7 +233,9 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
     for (iter1 = 0; iter1 < number_faces; iter1++)
     {
         sprintf(command2, "%s%s%s", "ccndstatus |grep -w 'pending'|grep -w 'face: ", face[iter1], "'|awk -F 'remote:' '{print $2}' |awk -F ':' '{print $1}'|tr -s '\\n'|head -n 1");
-
+#ifdef DEBUG
+        printf("Command2 %s\n", command2);
+#endif
         //execute command
         FILE *fp2 = popen(command2, "r");
         if (fp2 == NULL)
@@ -668,7 +670,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 #ifdef DEBUG
         for (i=0; i <number_faces; i++)
         {
-            printf("face %s:  %s\n", faces[i], longest_prefix);
+            printf("face %s is %s\n", faces[i], longest_prefix);
         }
 #endif
 
@@ -701,14 +703,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             //get the number of remote ips
             res = find_remote_ip(faces, number_faces, remote_ips, &num_remote_ips);
 #ifdef DEBUG
-            printf("%d longest_prefix %s\n", num_remote_ips, longest_prefix);
+            printf("Number of remote IP %d longest_prefix %s\n", num_remote_ips, longest_prefix);
 #endif
 
             //if no remote ip found, this is local
             if (num_remote_ips == 0)
             {
-                //does the name matches with longest prefix? otherwise, no such contetn
-                if (strcmp((const char *)interest_name, (const char *)longest_prefix) == 0)
+                //does the name matches with longest prefix(without ccnx:)? otherwise, no such content
+                if (strcmp((const char *)interest_name, (const char *)longest_prefix + 5) == 0)
                 {
 #ifdef DEBUG
                     printf("This is local\n");

@@ -227,9 +227,11 @@ int main(int argc, char *argv[])
     {
       slash = "/";
     }
+    char *tilde = "~";
     
-    //allocate memory for trace URI = /trace/user_input/random_number
-    char *TRACE_URI = (char *) malloc(sizeof(char)*(strlen(TRACE_PREFIX)+argv_length+1+100)); //find size of rand
+    //allocate memory for 
+    //trace URI = /trace/user_input/random_number/~/forward_path
+    char *TRACE_URI = (char *) calloc(strlen(TRACE_PREFIX)+ strlen(URI+skip) + 1 + 100 + 1 + 1 +128 + 1, sizeof(char)) ; //find size of rand
     if(TRACE_URI == NULL)
     {
         fprintf(stderr, "Can not allocate memory for URI\n");
@@ -239,7 +241,7 @@ int main(int argc, char *argv[])
     //put together the trace URI, add a random number to end of URI, this is the one we
     //are actually going to use in the interest packet
     srand ((unsigned int)time (NULL)*getpid());
-    sprintf(TRACE_URI, "%s%s%s%d", TRACE_PREFIX, URI+skip, slash, rand());
+    sprintf(TRACE_URI, "%s%s%s%d%s%s%s", TRACE_PREFIX, URI+skip, slash, rand(), tilde, slash, node_id);
         
     #ifdef DEBUG
         printf("%s\n", TRACE_URI);

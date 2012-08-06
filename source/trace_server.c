@@ -26,6 +26,8 @@
 #define DEBUG
 
 char node_id[128] = {0};
+char *slash = "/";
+char *tilde = "~";
 
 //for discarding duplicate interests
 int prev_interest = 0;
@@ -42,7 +44,7 @@ struct data
     char **fwd_message;
 };
 
-int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_interest *pi, const unsigned char **interest_name, int *interest_random_comp)
+int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_interest *pi, const unsigned char **interest_name, int *interest_random_comp, const char **forward_path)
 {
     //-----------------------------------------------------------------------//
     /// Arguments are interest message and parsed interest. Sets interest name
@@ -70,31 +72,43 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     reset_uri_string = uri_string;
     uri_string = uri_string + strlen("ccnx:/trace");
 
-    //get the last component, copy to int
+    //break the uri in two parts, uri and forward path
+    char *fwd_path, *base_uri;
+    base_uri = strtok(uri_string, "~");
+    fwd_path = strtok(NULL, "~");
+    if (base_uri == NULL || fwd_path == NULL)
+    {
+        fprintf(stderr, "Can not split URI\n");
+    }
+
+    printf("base uri %s fwd_path %s \n", base_uri, fwd_path);
+
+
+    //get the last component, copy to int, get the id, copy to path
     char *last_component = strrchr(uri_string, '/') + 1;
 #ifdef DEBUG
-    printf("last component %s len %Zu\n", last_component, strlen(last_component));
+    printf("last component %s fwd_path %s len %Zu \n", last_component, fwd_path,  strlen(last_component));
 #endif
+
+    //set the last_comp and fwd_path to the passed vars, add a / at the end of
+    //fwd path
     sscanf((const char * )last_component, "%d", interest_random_comp);
+    *forward_path = calloc(strlen(fwd_path)+1+1, sizeof(char));
+    sprintf((char *)*forward_path, "%s%s", fwd_path, slash);
 
     //get the remaining name, set it to interest name
     //uri - -len of ccnx:/trace - len of last component - 1 for the / + 1 for the \n
-    int truncated_uri_length =  strlen(uri_string) - strlen(last_component) -  1 ;
+    int truncated_uri_length =  strlen(uri_string) - strlen(last_component) - 1 ;
 #ifdef DEBUG
     printf("uri length%d\n", truncated_uri_length);
 #endif
-    *interest_name = malloc(sizeof(char) * truncated_uri_length + 1);
+    *interest_name = calloc(truncated_uri_length + 1, sizeof(char)) ;
     if (interest_name == NULL)
     {
         fprintf(stderr, "Can not allocate memory for interest_name\n");
         exit(1);
     }
-    memset((void *)*interest_name, 0, truncated_uri_length+1);
     strncpy((char *)*interest_name, uri_string, truncated_uri_length);
-#ifdef DEBUG
-    printf("Interest name %s\n", *interest_name);
-#endif
-
     //reset before freeing string
 
     //free data structures
@@ -115,7 +129,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
     //-----------------------------------------------------------------------//
 
 #ifdef DEBUG
-    printf("interest name%s\n", interest_name);
+    printf("finding faces for %s\n", interest_name);
 #endif
 
     char *command = (char *) malloc(strlen((const char *)interest_name)+100);
@@ -194,18 +208,15 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             *last_component = '\0';
         }
 #ifdef DEBUG
-        printf("string after removal: %s length: %Zu\n", search_str, strlen(search_str));
+        printf("string after removal: %s length: %Zu default route flag %d\n", search_str, strlen(search_str), default_rt_flag);
 #endif
         if (strcmp(search_str, "ccnx:") == 0 && default_rt_flag == 0)
         {
-            printf("here\n");
             sprintf(search_str, "%s", "ccnx:/");
             default_rt_flag = 1;
         }
         else if (strcmp(search_str, "ccnx:") == 0)
             break;
-
-
         len_search_str = strlen(search_str);
     }
 
@@ -273,36 +284,34 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
 }
 
 
-char* swap_random(const unsigned char *interest_name, int interest_random_comp, char **new_interest_name, int *new_interest_random_comp)
-
-
-
+char* swap_random(const unsigned char *interest_name, int interest_random_comp, char **new_interest_name, int *new_interest_random_comp, const char *fwd_path)
 {
     //-----------------------------------------------------------------------//
-    ///Takes an interest name, swaps the random component for forwarding.
-    ///the random seed is declared in the main
+    ///Takes an interest name, swaps the random component for forwarding,
+    //appends path id. The random seed is declared in the main.
     //-----------------------------------------------------------------------//
 
 #ifdef DEBUG
-    printf("%s %d\n", interest_name, interest_random_comp);
+    printf("Swap random, interest name %s  random %d fwd_path %s\n", interest_name, interest_random_comp, fwd_path);
 #endif
 
     int rand_comp = rand();
-    *new_interest_random_comp = rand_comp;
+    *new_interest_random_comp = rand_comp; 
 
     //set the new interest name
     char *new_rand_comp = calloc(128, sizeof(int));
     sprintf(new_rand_comp, "%d", rand_comp);
-    char *slash ="/";
     char *trace = "/trace";
+    char *new_fwd_path = calloc(strlen(fwd_path) + strlen(node_id) + strlen(slash) + 1, sizeof(char));
+    sprintf(new_fwd_path, "%s%s", fwd_path, node_id);
     ////////////////////free at callling function/////////////
-    *new_interest_name = malloc(strlen(trace) + strlen((const char *)interest_name) + strlen(new_rand_comp) + strlen(slash) + 1);
+    *new_interest_name = calloc(strlen(trace) + strlen((const char *)interest_name) + strlen(slash) + strlen(new_rand_comp) + strlen(tilde) + strlen(new_fwd_path) + 1, sizeof(char));
     if (new_interest_name == NULL)
     {
         fprintf(stderr, "Can not allocate memory for new_interest_name\n");
         exit(1);
     }
-    sprintf(*new_interest_name, "%s%s%s%s", trace, interest_name, slash, new_rand_comp);
+    sprintf(*new_interest_name, "%s%s%s%s%s%s", trace, interest_name, slash, new_rand_comp, tilde, new_fwd_path);
 #ifdef DEBUG
     printf("Forwarding interest %s with random component %d\n\n\n", *new_interest_name, rand_comp);
 #endif
@@ -574,13 +583,9 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     return(0);
 }
 
-
-
-
 enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                                       enum ccn_upcall_kind kind, struct ccn_upcall_info *info)
 {
-
 
     //-----------------------------------------------------------------------//
     /// callback function, all interest matching ccnx:/trace will come here,
@@ -601,6 +606,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     int interest_random_comp = 0;
     const unsigned char *longest_prefix = NULL;
     char *new_interest_name = NULL;
+    const char *forward_path;
 
     //data structures for forwarding interests
     struct ccn_charbuf *name_fwd = ccn_charbuf_create();
@@ -623,7 +629,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     char interest_random_comp_string[128] = {0};
 
     int processed[10000]; //duplicate removal
-    int flag  = 0;
+    int dup_flag  = 0;
 
     //switch on type of event
     switch (kind)
@@ -636,14 +642,25 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         break;
 
     case CCN_UPCALL_INTEREST:
-
+{
         //received matching interest
         //get the interest name and random component from incoming packet
-        res = find_interest_name(info->interest_ccnb, info->pi, &interest_name, &interest_random_comp);
+        res = find_interest_name(info->interest_ccnb, info->pi, &interest_name, &interest_random_comp, &forward_path);
 #ifdef DEBUG
-        printf("Interest name %s, random is %d\n", interest_name, interest_random_comp);
+        printf("Interest name %s, random is %d forward_path is %s \n", interest_name, interest_random_comp, forward_path);
 #endif
         sprintf(interest_random_comp_string, "%d", interest_random_comp);
+
+        //if node id == forward_path, it came from the client. No forwarded
+        //interest name will match node_id_with_slash.
+        //If the above is false and node id in forward path, this is duplicate
+        char node_id_with_slash[130] = {0};
+        sprintf(node_id_with_slash, "%s%s%s", slash, node_id, slash);
+        if (strcmp(node_id_with_slash, (const char *)forward_path) !=0 && strstr((const char *)forward_path, node_id_with_slash) !=NULL)
+        {
+            printf("came from remote client and duplicate\n");
+            dup_flag = 1;
+        }
 
         //check for duplicate messages
         for (iter = 0; iter < processed_index; iter++)
@@ -653,13 +670,13 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 #ifdef DEBUG
                 printf("duplicate interest, random value = %d\n",processed[iter]);
 #endif
-                flag = 1;
+                dup_flag = 1;
                 break;
             }
         }
 
         //if duplicate message, do nothing. Otherwise, add to processed list and proceed
-        if (flag == 1)
+        if (dup_flag == 1)
             break;
         processed[processed_index] = interest_random_comp;
         processed_index += 1;
@@ -755,11 +772,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 #endif
                 num_reply = num_remote_ips;
 
-                //for each remote ip, swap random number and forward interest
+                //for each remote ip, swap random number, forward interest
                 for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
                 {
                     //swap the random string
-                    swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp);
+                    swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
                     sprintf(new_interest_random_comp_str, "%d", new_interest_random_comp);
 #ifdef DEBUG
                     printf("new interest name %s\n", new_interest_name);
@@ -907,7 +924,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         }
         return CCN_UPCALL_FINAL;
         break;
-
+}
     case CCN_UPCALL_INTEREST_TIMED_OUT:
         printf("request timed out - retrying\n");
         return CCN_UPCALL_RESULT_REEXPRESS;

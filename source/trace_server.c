@@ -491,7 +491,7 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
 
     //setting the parameters for ccn_get
     struct ccn_parsed_ContentObject pcobuf = { 0 };
-    int timeout_ms = 8000;
+    int timeout_ms = 4000;
 
     //express interest
     res = ccn_get(ccn_fwd, ccnb_fwd, NULL, timeout_ms, resultbuf, &pcobuf, NULL, 0);
@@ -660,6 +660,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         {
             printf("came from remote client and duplicate\n");
             dup_flag = 1;
+            break;
         }
 
         //check for duplicate messages
@@ -678,6 +679,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         //if duplicate message, do nothing. Otherwise, add to processed list and proceed
         if (dup_flag == 1)
             break;
+
         processed[processed_index] = interest_random_comp;
         processed_index += 1;
 
@@ -786,7 +788,12 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     processed[processed_index] = new_interest_random_comp;
                     processed_index += 1;
 
-                    //add the remote route
+                    //add the remote route, if remote ip not in fwd_route
+                    char *remote_ip_with_slash = calloc(strlen(remote_ips[remote_ip_index]) + 2 + 1, sizeof(char));
+                    sprintf(remote_ip_with_slash, "%s%s%s", slash, remote_ips[remote_ip_index], slash);
+                   if (strstr(new_interest_name, remote_ip_with_slash) == NULL)
+                   {
+                    
                     manage_route(new_interest_name, remote_ips[remote_ip_index], 0);
 
                     //create fwd interest
@@ -803,9 +810,10 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 
                     //delete the route
                     manage_route(new_interest_name, remote_ips[remote_ip_index], 1);
-
+                   }
                     //we are done with the new interest name, go back for the next remote ip
                     free(new_interest_name);
+                    free(remote_ip_with_slash);
 
                 }
 

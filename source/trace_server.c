@@ -296,7 +296,7 @@ char* swap_random(const unsigned char *interest_name, int interest_random_comp, 
 #endif
 
     int rand_comp = rand();
-    *new_interest_random_comp = rand_comp; 
+    *new_interest_random_comp = rand_comp;
 
     //set the new interest name
     char *new_rand_comp = calloc(128, sizeof(int));
@@ -642,7 +642,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         break;
 
     case CCN_UPCALL_INTEREST:
-{
+    {
         //received matching interest
         //get the interest name and random component from incoming packet
         res = find_interest_name(info->interest_ccnb, info->pi, &interest_name, &interest_random_comp, &forward_path);
@@ -791,26 +791,26 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     //add the remote route, if remote ip not in fwd_route
                     char *remote_ip_with_slash = calloc(strlen(remote_ips[remote_ip_index]) + 2 + 1, sizeof(char));
                     sprintf(remote_ip_with_slash, "%s%s%s", slash, remote_ips[remote_ip_index], slash);
-                   if (strstr(new_interest_name, remote_ip_with_slash) == NULL)
-                   {
-                    
-                    manage_route(new_interest_name, remote_ips[remote_ip_index], 0);
-
-                    //create fwd interest
-                    res = ccn_name_from_uri(name_fwd, new_interest_name);
-                    if (res < 0)
+                    if (strstr(new_interest_name, remote_ip_with_slash) == NULL)
                     {
-                        fprintf(stderr, "can not convert new interest name %s\n", new_interest_name);
-                        exit(1);
+
+                        manage_route(new_interest_name, remote_ips[remote_ip_index], 0);
+
+                        //create fwd interest
+                        res = ccn_name_from_uri(name_fwd, new_interest_name);
+                        if (res < 0)
+                        {
+                            fprintf(stderr, "can not convert new interest name %s\n", new_interest_name);
+                            exit(1);
+                        }
+
+                        //express interest
+                        get_fwd_reply(name_fwd, new_interest_name, &*fwd_reply, &num_reply, fwd_list_index, remote_ips[remote_ip_index]);
+                        fwd_list_index += num_reply;
+
+                        //delete the route
+                        manage_route(new_interest_name, remote_ips[remote_ip_index], 1);
                     }
-
-                    //express interest
-                    get_fwd_reply(name_fwd, new_interest_name, &*fwd_reply, &num_reply, fwd_list_index, remote_ips[remote_ip_index]);
-                    fwd_list_index += num_reply;
-
-                    //delete the route
-                    manage_route(new_interest_name, remote_ips[remote_ip_index], 1);
-                   }
                     //we are done with the new interest name, go back for the next remote ip
                     free(new_interest_name);
                     free(remote_ip_with_slash);
@@ -932,7 +932,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         }
         return CCN_UPCALL_FINAL;
         break;
-}
+    }
     case CCN_UPCALL_INTEREST_TIMED_OUT:
         printf("request timed out - retrying\n");
         return CCN_UPCALL_RESULT_REEXPRESS;

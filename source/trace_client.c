@@ -98,10 +98,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         free(reply.message_length);
         free(reply.fwd_message);
         
-        //we are done, bail
-//        return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);        
-        return(CCN_UPCALL_RESULT_OK);        
-        break;
+        //we are done, exit
+         exit(0);
 
     //default timeout in ccn is 4 secs, number of retries are decided by timeout argument
     //devided by 4 secs.

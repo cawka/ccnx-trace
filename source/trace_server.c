@@ -57,6 +57,12 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     struct ccn_charbuf *name = ccn_charbuf_create();
     res = ccn_charbuf_append(name, interest_msg + pi->offset[CCN_PI_B_Name],
                              pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name]);
+
+    if (res < 0)
+    {
+        fprintf(stderr, "find_interest_name: Could not get interest name. Res = %d\n", res);
+    }
+
     struct ccn_charbuf *uri = ccn_charbuf_create();
     ccn_uri_append(uri, name->buf, name->length, 1);
 #ifdef DEBUG
@@ -530,13 +536,13 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
         fprintf(stderr, "Did not receive answer for trace to %s\n", new_interest_name);
 
         //if we did not receive answer, set the answer
-        fwd_reply[fwd_list_index] = malloc(sizeof (char *)* (strlen(remote_ip) + strlen("timeout")+1));
+        fwd_reply[fwd_list_index] = malloc(sizeof (char *)* (strlen(remote_ip) + strlen("TIMEOUT TO")+1));
         if (fwd_reply[fwd_list_index] == NULL)
         {
             printf("Could not allocate memory for timeout reply message\n");
             exit(1);
         }
-        sprintf(fwd_reply[fwd_list_index], "%s%s", remote_ip, ":TIMEOUT");
+        sprintf(fwd_reply[fwd_list_index], "%s%s", "TIMEOUT TO", remote_ip) ;
         *num_reply = 1;
     }
 

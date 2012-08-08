@@ -526,8 +526,22 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
 
     //setting the parameters for ccn_get
     struct ccn_parsed_ContentObject pcobuf = { 0 };
-    //randomize the get so that the nodes don't sync
-    int timeout_ms = 4000 + rand()%100;
+
+    //randomize the ccn_get so that the nodes don't sync
+    //if request is from local client, increase the timeout by 4
+
+    int timeout_ms = 4000 + rand()%1000;
+    char double_node_id [256] = {0};
+    sprintf(double_node_id, "%s%s%s%s", slash, node_id, slash, node_id);
+
+    if (strstr(new_interest_name, double_node_id)!= NULL)
+    {
+        timeout_ms *= 4;
+    }
+#ifdef DEBUG
+    printf("checking for local client%s\n", double_node_id);
+    printf("timeout_ms %d\n\n", timeout_ms);
+#endif
 
     //express interest
     res = ccn_get(ccn_fwd, ccnb_fwd, NULL, timeout_ms, resultbuf, &pcobuf, NULL, 0);

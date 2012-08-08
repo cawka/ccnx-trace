@@ -783,7 +783,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 #ifdef DEBUG
                     printf("new interest name %s\n", new_interest_name);
 #endif
-
                     //add to the processed list
                     processed[processed_index] = new_interest_random_comp;
                     processed_index += 1;
@@ -793,7 +792,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     sprintf(remote_ip_with_slash, "%s%s%s", slash, remote_ips[remote_ip_index], slash);
                     if (strstr(new_interest_name, remote_ip_with_slash) == NULL)
                     {
-
+                        //add the route
                         manage_route(new_interest_name, remote_ips[remote_ip_index], 0);
 
                         //create fwd interest
@@ -862,7 +861,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 }
             }
         }
-
 
         //now we have the messages, pack them and send them back
 #ifdef DEBUG
@@ -962,7 +960,6 @@ void usage(void)
     printf("  -V             print version and exit\n\n");
     exit(0);
 }
-
 
 
 int main(int argc, char **argv)

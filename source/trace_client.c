@@ -134,12 +134,12 @@ void usage(void)
 {
     ///prints the usage and exits
     printf("%s version %s \n", CLI_PROGRAM, CLI_VERSION);
-    printf("%s [-h] [-V] -u URI -t TIMEOUT(ms)\n\n", CLI_PROGRAM);
+    printf("%s -u URI [-t] TIMEOUT(ms) [-h] [-V] \n\n", CLI_PROGRAM);
 
+    printf("  -u URI         URI to trace to\n");
+    printf("  -t TIMEOUT     set timeout in milisecond, default 30 sec\n");
     printf("  -h             print this help and exit\n");
     printf("  -V             print version and exit\n\n");
-    printf("  -u URI         URI to trace to\n");
-    printf("  -t TIMEOUT     set timeout in milisecond\n");
     exit(0);
 }
 
@@ -148,11 +148,11 @@ int main(int argc, char *argv[])
     int opt;
     char *URI = NULL;
     char *timeout = NULL;
-    int timeout_ms = 0;
+    int timeout_ms = 30000;
     int res = 0;
     
     //check if user supplied uri to trace to, read the arguments and check them
-    if(argc < 5)
+    if(argc < 3)
     {
         fprintf(stderr, "%s: Error - Not enough arguments\n\n", CLI_PROGRAM);
         usage();
@@ -230,7 +230,7 @@ int main(int argc, char *argv[])
     char *tilde = "~";
     
     //allocate memory for 
-    //trace URI = /trace/user_input/random_number/~/forward_path
+    //trace URI = /trace/user_input/random_number/~/forward_path(ID of self)
     char *TRACE_URI = (char *) calloc(strlen(TRACE_PREFIX)+ strlen(URI+skip) + 1 + 100 + 1 + 1 +128 + 1, sizeof(char)) ; //find size of rand
     if(TRACE_URI == NULL)
     {

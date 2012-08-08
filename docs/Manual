@@ -30,3 +30,26 @@ three times before giving up.
 
 o Make sure you have a route to the content you are trying to trace to. For example, for tracing to
 /ndn/csu/netsec/index, you should have a FIB entry that points to /ndn/csu/netsec/index
+
+
+Output
+------
+The output means the following:
+o 192.168.1.1:LOCAL
+    The content is locally published at 192.168.1.1
+
+o 192.168.1.1 -> TIMEOUT TO 192.168.1.2
+    Timeout between 192.168.1.1 and 192.168.1.2
+
+o 192.168.1.1: NO SUCH CONTENT
+    The namespace is ok, the interest got routed properly. However, the node
+    does not publish any such content
+
+o 192.168.1.1: NO ROUTE
+    192.168.1.1 does not know how to forward the interest.
+
+o Did not receive any reply
+    The client did not receive any reply from local server. Check if local trace
+    server is running.
+
+Node -> Intermediate 

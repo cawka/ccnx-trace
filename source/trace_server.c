@@ -23,7 +23,7 @@
 #include "version.h"
 
 
-#define DEBUG
+//#define DEBUG
 
 char node_id[128] = {0};
 char *slash = "/";

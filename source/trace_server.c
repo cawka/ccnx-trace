@@ -536,7 +536,7 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
 
     if (strstr(new_interest_name, double_node_id)!= NULL)
     {
-        timeout_ms *= 4;
+        timeout_ms *= 2;
     }
 #ifdef DEBUG
     printf("checking for local client%s\n", double_node_id);

@@ -520,7 +520,8 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
 
     //setting the parameters for ccn_get
     struct ccn_parsed_ContentObject pcobuf = { 0 };
-    int timeout_ms = 4000;
+    //randomize the get so that the nodes don't sync
+    int timeout_ms = 4000 + rand()%100;
 
     //express interest
     res = ccn_get(ccn_fwd, ccnb_fwd, NULL, timeout_ms, resultbuf, &pcobuf, NULL, 0);

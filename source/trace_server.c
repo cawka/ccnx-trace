@@ -246,7 +246,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
 #endif
         if (strcmp(search_str, "ccnx:") == 0 && default_rt_flag == 0)
         {
-            sprintf(search_str, "%s", "ccnx:/");
+            sprintf(search_str, "%s", "ccnx:/ ");
             default_rt_flag = 1;
         }
         else if (strcmp(search_str, "ccnx:") == 0)
@@ -759,14 +759,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             //get the number of remote ips
             res = find_remote_ip(faces, number_faces, remote_ips, &num_remote_ips);
 #ifdef DEBUG
-            printf("Number of remote IP %d longest_prefix %s matching fib_entry%s\n", num_remote_ips, longest_prefix, matching_fib_entry);
+            printf("Number of remote IP %d interest_name %s longest_prefix %s matching fib_entry%s\n", num_remote_ips, interest_name, longest_prefix, matching_fib_entry);
 #endif
 
             //if no remote ip found, this is local
             if (num_remote_ips == 0)
             {
                 //does the name matches with longest prefix(without ccnx:)? otherwise, no such content
-                if (strcmp((const char *)longest_prefix, (const char *)matching_fib_entry) == 0)
+                if (strcmp((const char *)interest_name, (const char *)matching_fib_entry+5) == 0)
                 {
 #ifdef DEBUG
                     printf("This is local\n");

@@ -120,7 +120,7 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
 }
 
 
-int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, const unsigned char **longest_match)
+int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, const unsigned char **longest_match, char **matching_fib_entry)
 {
 
     //-----------------------------------------------------------------------//
@@ -132,8 +132,9 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
     printf("finding faces for %s\n", interest_name);
 #endif
 
-    char *command = (char *) malloc(strlen((const char *)interest_name)+100);
-    char readbuf[1024];
+    char *command_find_faces = (char *) malloc(strlen((const char *)interest_name)+100);
+    char *command_fib_entry = (char *) malloc(strlen((const char *)interest_name)+1024);
+    char readbuf[1024]= {0};
     int face_index=0;
     int default_rt_flag = 0;
 
@@ -151,14 +152,14 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
     //parse the ccndstatus for match
     while (len_search_str > 0)
     {
-        sprintf(command, "%s%s%s", "ccndstatus|grep -w '", search_str, " face'|awk -F 'face:' '{print $2}' |awk '{print $1}'|sort|uniq");
+        sprintf(command_find_faces, "%s%s%s", "ccndstatus|grep -w '", search_str, "'|awk -F 'face:' '{print $2}' |awk '{print $1}'|sort|uniq");
 
 #ifdef DEBUG
-        printf("%s\n", command);
+        printf("%s\n", command_find_faces);
 #endif
 
         //execute the command
-        FILE *fp = popen(command, "r");
+        FILE *fp = popen(command_find_faces, "r");
         if (fp == NULL)
         {
             printf("can not execute ccndstatus\n");
@@ -178,6 +179,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
         fclose(fp);
 
         //if faces are found, we are done, no need to match shorter prefixes, search_str is the prefix
+        // find the fib entry and set it
         if (face_index > 0)
         {
             *longest_match = malloc(sizeof(char) * strlen(search_str) + 1);
@@ -187,8 +189,34 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
                 exit(1);
             }
             strcpy((char *)*longest_match, search_str);
+
+            //find the fib entry that matched
+
+            sprintf(command_fib_entry, "%s%s%s", "ccndstatus|grep -w '", search_str, "'|awk '{printf $1}'");
+
 #ifdef DEBUG
-            printf("longest match %s strlen %Zu\n", *longest_match,  strlen((const char *)*longest_match));
+            printf("%s\n", command_fib_entry);
+#endif
+
+            //execute the command
+            fp = popen(command_fib_entry, "r");
+            if (fp == NULL)
+            {
+                printf("can not execute ccndstatus\n");
+                exit(1);
+            }
+
+            //read buffer and get the first match
+            //////////////free(faces[face_index]); at calling function/////////////
+            memset(readbuf, 0, 1024);
+            while (fgets(readbuf, 1024, fp) != NULL)
+            {
+                *matching_fib_entry = calloc(strlen(readbuf)+1, sizeof(char));
+                strncpy(*matching_fib_entry, readbuf, strlen(readbuf));
+            }
+            fclose(fp);
+#ifdef DEBUG
+            printf("longest match %s strlen %Zu, fib entry %s length %Zu\n", *longest_match,  strlen((const char *)*longest_match), *matching_fib_entry, strlen((const char *)*matching_fib_entry));
 #endif
             free(search_str);
             break;
@@ -224,7 +252,8 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
     printf("number of faces %d\n", face_index);
 #endif
     *num_faces = face_index;
-    free(command);
+    free(command_find_faces);
+    free(command_fib_entry);
     return(0);
 }
 
@@ -606,7 +635,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     int interest_random_comp = 0;
     const unsigned char *longest_prefix = NULL;
     char *new_interest_name = NULL;
-    const char *forward_path;
+    const char *forward_path = NULL;
+    char *matching_fib_entry = NULL;
 
     //data structures for forwarding interests
     struct ccn_charbuf *name_fwd = ccn_charbuf_create();
@@ -684,7 +714,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         processed_index += 1;
 
         //get the matching faces for this interest
-        res = get_faces(interest_name, faces, &number_faces, &longest_prefix);
+        res = get_faces(interest_name, faces, &number_faces, &longest_prefix, &matching_fib_entry);
 
 #ifdef DEBUG
         for (i=0; i <number_faces; i++)
@@ -722,14 +752,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             //get the number of remote ips
             res = find_remote_ip(faces, number_faces, remote_ips, &num_remote_ips);
 #ifdef DEBUG
-            printf("Number of remote IP %d longest_prefix %s\n", num_remote_ips, longest_prefix);
+            printf("Number of remote IP %d longest_prefix %s matching fib_entry%s\n", num_remote_ips, longest_prefix, matching_fib_entry);
 #endif
 
             //if no remote ip found, this is local
             if (num_remote_ips == 0)
             {
                 //does the name matches with longest prefix(without ccnx:)? otherwise, no such content
-                if (strcmp((const char *)interest_name, (const char *)longest_prefix + 5) == 0)
+                if (strcmp((const char *)longest_prefix, (const char *)matching_fib_entry) == 0)
                 {
 #ifdef DEBUG
                     printf("This is local\n");
@@ -764,6 +794,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     }
                     sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":NO SUCH CONTENT");
                 }
+                free(matching_fib_entry);
             }
 
             //we found some remote ips for this face
@@ -815,6 +846,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     free(remote_ip_with_slash);
 
                 }
+                free((void *)forward_path);
 
                 //free remote ip list, we don't need it
                 for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
@@ -847,14 +879,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 return_data.fwd_message = malloc(sizeof(char *) * return_data.num_message);
                 for (i = 0; i < fwd_list_index; i++)
                 {
-                    return_data.message_length[i] = strlen(node_id) + strlen(":FWD ")+ strlen(fwd_reply[i]) + 1;
-                    return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen(":FWD ")+ strlen(fwd_reply[i]) + 1);
+                    return_data.message_length[i] = strlen(node_id) + strlen(":")+ strlen(fwd_reply[i]) + 1;
+                    return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen(":")+ strlen(fwd_reply[i]) + 1);
                     if (return_data.fwd_message[i] == NULL)
                     {
                         fprintf(stderr, "Can not allocate memory for reply message number %d\n", i);
                         exit(1);
                     }
-                    sprintf(return_data.fwd_message[i], "%s%s%s",  node_id, ":FWD ", fwd_reply[i]);
+                    sprintf(return_data.fwd_message[i], "%s%s%s",  node_id, ":", fwd_reply[i]);
 #ifdef DEBUG
                     printf("%s\n", return_data.fwd_message[i]);
 #endif
@@ -908,6 +940,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             memcpy(buffer, return_data.fwd_message[iter], return_data.message_length[iter]);
             buffer += return_data.message_length[iter];
             buffer_len += return_data.message_length[iter];
+            free(return_data.fwd_message[iter]);
         }
 
         //reset pointer
@@ -923,6 +956,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         ccn_charbuf_destroy(&name_fwd);
         free((void*)interest_name);
         free((void *)longest_prefix);
+        free(return_data.fwd_message);
         free(buffer);
         for (i=0; i < number_faces; i++)
         {

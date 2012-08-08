@@ -886,14 +886,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 return_data.fwd_message = malloc(sizeof(char *) * return_data.num_message);
                 for (i = 0; i < fwd_list_index; i++)
                 {
-                    return_data.message_length[i] = strlen(node_id) + strlen(":")+ strlen(fwd_reply[i]) + 1;
-                    return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen(":")+ strlen(fwd_reply[i]) + 1);
+                    return_data.message_length[i] = strlen(node_id) + strlen(" -> ")+ strlen(fwd_reply[i]) + 1;
+                    return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen(" -> ")+ strlen(fwd_reply[i]) + 1);
                     if (return_data.fwd_message[i] == NULL)
                     {
                         fprintf(stderr, "Can not allocate memory for reply message number %d\n", i);
                         exit(1);
                     }
-                    sprintf(return_data.fwd_message[i], "%s%s%s",  node_id, ":", fwd_reply[i]);
+                    sprintf(return_data.fwd_message[i], "%s%s%s",  node_id, " -> ", fwd_reply[i]);
 #ifdef DEBUG
                     printf("%s\n", return_data.fwd_message[i]);
 #endif

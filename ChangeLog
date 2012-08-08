@@ -1,0 +1,53 @@
+Wed, 8 Aug 2012 11:23:00 -0600 susmit <susmit@cs.colostate.edu> 
+         * Version now: 1.1
+
+Wed, 8 Aug 2012 01:04:58 -0600 susmit <susmit@cs.colostate.edu> 
+	 * updating manual
+	 * adjusting the timeout value for locally connected clients
+	 * make output nicer
+
+Tue, 7 Aug 2012 23:57:03 -0600 susmit <susmit@cs.colostate.edu> 
+
+	 * fixing reply
+	 * Merge branch 'devel' of https://code.google.com/p/ccnx-trace into devel
+	 * adding random time to ccn_get, adoid sync
+	 * adding default timeout for client
+	 * adding check for local content using fib_entry
+	 * setting default timout in client
+	 * fixing formatting
+	 * fixing loop, reducing timeout, need to figure out a way to increase timeout at client
+
+Mon, 6 Aug 2012 13:34:49 -0600 susmit <susmit@cs.colostate.edu> 
+
+	 * should resolve issue 15, test pending
+
+Thu, 2 Aug 2012 11:25:52 -0600 susmit <susmit@cs.colostate.edu> 
+
+	 * fixing string comp between longest prefix and interest name, skipping first five chars: ccnx:
+	 * run server infinitely
+
+Wed, 1 Aug 2012 12:27:56 -0600 susmit <susmit@cs.colostate.edu> 
+
+	 * remove useless printf-s
+	 * fixing some memory leaks, adding feature for default route
+
+Tue, 31 Jul 2012 15:57:25 -0600 susmit <susmit@cs.colostate.edu> 
+
+	 * update usage
+	 * fixing stray res
+
+Fri, 27 Jul 2012 12:41:11 -0600 susmit <susmit@cs.colostate.edu> 
+
+	 * uncheck arg check
+	 * adding free
+
+Thu, 26 Jul 2012 12:17:15 -0600 susmit <susmit@cs.colostate.edu> 
+
+	 * formatted with astyle, insert comment and insert ifdef
+	 * fixing a free() error in find interest name
+	 * finxing a minor memory leak in swap_random
+	 * adding free for remote_ip
+	 * cleaning up swap_random
+	 * cleaning up find_remote_ip
+	 * adding clode fp
+	 * freeing memory in find_interest_name

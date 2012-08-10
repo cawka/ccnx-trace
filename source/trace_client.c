@@ -21,7 +21,7 @@
 
 void usage(void);
 
-//This is the node node_id. IP address for now. 
+//This is the node node_id. IP address for now.
 //This can be replaced by any unique ID.
 char node_id[128] = {0};
 
@@ -30,48 +30,48 @@ struct data
 {
     uint32_t num_message;
     uint32_t *message_length;
-    char **fwd_message;       
+    char **fwd_message;
 };
 
 
 enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
-        enum ccn_upcall_kind kind, struct ccn_upcall_info *info)
+                                      enum ccn_upcall_kind kind, struct ccn_upcall_info *info)
 {
     //this is the callback function, all interest matching ccnx:/trace
     //will come here, handle them as appropriate
     int res = 0;
-	const unsigned char *ptr;
-	size_t length;
+    const unsigned char *ptr;
+    size_t length;
     int i;
 
-    //data structure for the reply packet    
+    //data structure for the reply packet
     struct data reply;
 
     //switch on type of event
-    switch (kind) 
+    switch (kind)
     {
     case CCN_UPCALL_FINAL:
         free(selfp);
-        return CCN_UPCALL_RESULT_OK;    
+        return CCN_UPCALL_RESULT_OK;
 
-    case CCN_UPCALL_CONTENT:  
+    case CCN_UPCALL_CONTENT:
         printf("received content\n");
         printf("\n****************************\n");
-        
+
         //get the content from packet
-		res = ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, &ptr, &length);
+        res = ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, &ptr, &length);
         if (res < 0)
         {
             printf("Can not get value from content. res: %d", res);
             exit(1);
         }
-        
+
         //copy number of messages from packet
         memcpy(&reply.num_message, ptr, sizeof(uint32_t));
         ptr += sizeof(uint32_t);
-        #ifdef DEBUG
-            printf("Number of messages %d\n", reply.num_message);
-        #endif
+#ifdef DEBUG
+        printf("Number of messages %d\n", reply.num_message);
+#endif
 
         //store length of each message in an int array
         reply.message_length = malloc(sizeof(uint32_t)*reply.num_message);
@@ -82,7 +82,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         }
 
         //allocate memory of num_message number of messages
-        //in the loop, we allocate memory for each of those messages        
+        //in the loop, we allocate memory for each of those messages
         reply.fwd_message = malloc(sizeof(char *) * reply.num_message);
         for(i=0; i < reply.num_message; i++)
         {
@@ -93,39 +93,39 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             free(reply.fwd_message[i]);
         }
         printf("****************************\n");
-        
+
         //free the memory we allocated
         free(reply.message_length);
         free(reply.fwd_message);
-        
+
         //we are done, exit
-         exit(0);
+        exit(0);
 
-    //default timeout in ccn is 4 secs, number of retries are decided by timeout argument
-    //devided by 4 secs.
+        //default timeout in ccn is 4 secs, number of retries are decided by timeout argument
+        //devided by 4 secs.
     case CCN_UPCALL_INTEREST_TIMED_OUT:
-		printf("request timed out - retrying\n");
-		return CCN_UPCALL_RESULT_REEXPRESS;
+        printf("request timed out - retrying\n");
+        return CCN_UPCALL_RESULT_REEXPRESS;
 
-	case CCN_UPCALL_CONTENT_UNVERIFIED: 
+    case CCN_UPCALL_CONTENT_UNVERIFIED:
         fprintf(stderr, "%s: Error - Could not verify content\n\n", CLI_PROGRAM);
         return CCN_UPCALL_RESULT_ERR;
 
-	case CCN_UPCALL_CONTENT_BAD:
+    case CCN_UPCALL_CONTENT_BAD:
         fprintf(stderr, "%s: Error - Bad content\n\n", CLI_PROGRAM);
-		return CCN_UPCALL_RESULT_ERR;
+        return CCN_UPCALL_RESULT_ERR;
 
     case CCN_UPCALL_INTEREST:
         //don't care about interests, will do nothing
         break;
 
-	default:
-		printf("Unexpected response\n");
-		return CCN_UPCALL_RESULT_ERR;
-    
+    default:
+        printf("Unexpected response\n");
+        return CCN_UPCALL_RESULT_ERR;
+
     }
 
-return(0);
+    return(0);
 }
 
 void usage(void)
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
     char *timeout = NULL;
     int timeout_ms = 30000;
     int res = 0;
-    
+
     //check if user supplied uri to trace to, read the arguments and check them
     if(argc < 3)
     {
@@ -195,11 +195,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Can not get node_id\n");
         exit(1);
     }
-    
+
     //print node id
-    #ifdef DEBUG
-        printf("Node ID:%s\n", node_id);
-    # endif
+#ifdef DEBUG
+    printf("Node ID:%s\n", node_id);
+# endif
 
     //get the length of user provided URI
     size_t argv_length = strlen(URI);
@@ -209,8 +209,8 @@ int main(int argc, char *argv[])
     res = strncmp("ccnx:/", URI, 6);
     if(res == 0)
     {
-        skip = 5;        
-    } 
+        skip = 5;
+    }
 
     //if URI does not begins with /, exit
     if (URI[skip] != '/')
@@ -223,11 +223,11 @@ int main(int argc, char *argv[])
     char *slash = "";
     if (URI[argv_length-1] != '/')
     {
-      slash = "/";
+        slash = "/";
     }
     char *tilde = "~";
-    
-    //allocate memory for 
+
+    //allocate memory for
     //trace URI = /trace/user_input/random_number/~/forward_path(ID of self)
     char *TRACE_URI = (char *) calloc(strlen(TRACE_PREFIX)+ strlen(URI+skip) + 1 + 100 + 1 + 1 +128 + 1, sizeof(char)) ; //find size of rand
     if(TRACE_URI == NULL)
@@ -235,32 +235,32 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Can not allocate memory for URI\n");
         exit(1);
     }
-    
+
     //put together the trace URI, add a random number to end of URI, this is the one we
     //are actually going to use in the interest packet
     srand ((unsigned int)time (NULL)*getpid());
     sprintf(TRACE_URI, "%s%s%s%d%s%s%s", TRACE_PREFIX, URI+skip, slash, rand(), tilde, slash, node_id);
-        
-    #ifdef DEBUG
-        printf("%s\n", TRACE_URI);
-    #endif
 
-   //allocate memory for interest 
+#ifdef DEBUG
+    printf("%s\n", TRACE_URI);
+#endif
+
+    //allocate memory for interest
     struct ccn_charbuf *ccnb = ccn_charbuf_create();
     if(ccnb == NULL)
     {
         fprintf(stderr, "Can not allocate memory for interest\n");
         exit(1);
     }
-    
-    
+
+
     //adding name to interest
     res = ccn_name_from_uri(ccnb, TRACE_URI);
     if(res == -1)
     {
         fprintf(stderr, "Failed to assign name to interest");
         exit(1);
-    }    
+    }
 
     //create the ccn handle
     struct ccn *ccn = ccn_create();
@@ -269,24 +269,24 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Can not create ccn handle\n");
         exit(1);
     }
- 
+
     //connect to ccnd
     res = ccn_connect(ccn, NULL);
-    if (res == -1) 
+    if (res == -1)
     {
         fprintf(stderr, "Could not connect to ccnd... exiting\n");
         exit(1);
     }
 
-    #ifdef DEBUG
-        printf("Connected to CCND, return code: %d\n", res);
-    #endif
-   
+#ifdef DEBUG
+    printf("Connected to CCND, return code: %d\n", res);
+#endif
+
     printf("expressing interest for: %s\n", TRACE_URI);
     struct ccn_closure *incoming;
     incoming = calloc(1, sizeof(*incoming));
-	incoming->p = incoming_interest;
-	res = ccn_express_interest(ccn, ccnb, incoming, NULL);
+    incoming->p = incoming_interest;
+    res = ccn_express_interest(ccn, ccnb, incoming, NULL);
     if (res == -1)
     {
         fprintf(stderr, "Could not express interest for %s\n", URI);
@@ -295,15 +295,15 @@ int main(int argc, char *argv[])
 
 
     //run for timeout miliseconds
-	res = ccn_run(ccn, timeout_ms); 
-	if (res < 0) 
+    res = ccn_run(ccn, timeout_ms);
+    if (res < 0)
     {
-		fprintf(stderr, "ccn_run error\n");
-		exit(1);
-	}
-	
-	//there is a memory leak for incoming, figure a way to free ccn_closure
-	free(TRACE_URI);
+        fprintf(stderr, "ccn_run error\n");
+        exit(1);
+    }
+
+    //there is a memory leak for incoming, figure a way to free ccn_closure
+    free(TRACE_URI);
     ccn_charbuf_destroy(&ccnb);
     ccn_destroy(&ccn);
     exit(0);

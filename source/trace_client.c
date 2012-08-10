@@ -47,6 +47,9 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     //data structure for the reply packet
     struct data reply;
 
+    char *delims = ":";
+    int hop = 0;
+    char *result = NULL;
     //switch on type of event
     switch (kind)
     {
@@ -55,8 +58,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         return CCN_UPCALL_RESULT_OK;
 
     case CCN_UPCALL_CONTENT:
-        printf("received content\n");
-        printf("\n****************************\n");
 
         //get the content from packet
         res = ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, &ptr, &length);
@@ -89,17 +90,34 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             reply.fwd_message[i] = malloc(sizeof(char) * reply.message_length[i]);
             memcpy(reply.fwd_message[i], ptr, reply.message_length[i]);
             ptr += reply.message_length[i];
+#ifdef DEBUG
             printf("%s\n", reply.fwd_message[i]);
+#endif
+            //break the forward messages and print them
+
+            hop = 0;
+            result = NULL;
+            printf("\n**********Route %d************\n", i);
+            result = strtok(reply.fwd_message[i], delims);
+            while( result != NULL ) {
+                printf( "%d: %s \n", hop, result );
+                result = strtok( NULL, delims );
+                hop++;
+            }
+
+            printf("\n***************************\n");
             free(reply.fwd_message[i]);
         }
-        printf("****************************\n");
 
         //free the memory we allocated
         free(reply.message_length);
         free(reply.fwd_message);
 
-        //we are done, exit
+        //we are done, bail
         exit(0);
+//        return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+        return(CCN_UPCALL_RESULT_OK);
+        break;
 
         //default timeout in ccn is 4 secs, number of retries are decided by timeout argument
         //devided by 4 secs.
@@ -282,7 +300,11 @@ int main(int argc, char *argv[])
     printf("Connected to CCND, return code: %d\n", res);
 #endif
 
-    printf("expressing interest for: %s\n", TRACE_URI);
+    printf("trace to %s\n", URI);
+
+#ifdef DEBUG
+    printf("Full interest name %s\n", TRACE_URI);
+#endif
     struct ccn_closure *incoming;
     incoming = calloc(1, sizeof(*incoming));
     incoming->p = incoming_interest;

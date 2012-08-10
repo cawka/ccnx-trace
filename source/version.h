@@ -1,6 +1,6 @@
-#define CLI_PROGRAM    "trace_client"
-#define CLI_VERSION    "1.0.1"
+#define CLI_PROGRAM    "trace"
+#define CLI_VERSION    "1.1"
 
-#define SRV_PROGRAM    "trace_server"
-#define SRV_VERSION    "1.0.1"
+#define SRV_PROGRAM    "ccn_traced"
+#define SRV_VERSION    "1.1"
 

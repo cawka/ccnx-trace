@@ -47,7 +47,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     //data structure for the reply packet
     struct data reply;
 
-    char *delims = " -> ";
+    char *delims = "~";
     int hop = 0;
     char *result = NULL;
     //switch on type of event

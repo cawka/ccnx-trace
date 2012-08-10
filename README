@@ -14,12 +14,13 @@ DEVEL
   ----------
   Components
   ----------
-  The tool consists of two tools. The "trace_client" and the "trace_server".
+  The tool consists of two tools. The server is called "ccn_traced" and the 
+  client "trace".
 
   -------------------
   The Latest Version
   ------------------ 
-  The latest version for both the client and the server is 1.0.1.
+  The latest version for both the client and the server is 1.1.
     
   -------------    
   Installation
@@ -43,7 +44,7 @@ DEVEL
      o If you have any question regarding the code and the tool, please drop a 
      mail to <susmit@cs.colostate.edu>
      
-     o If you want to report an issue or a bug, please do so at, 
+     o If you want to report an issue or a bug, do so at, 
      https://code.google.com/p/ccnx-trace/issues/entry.
      You can also drop a mail to the above mail id.
 

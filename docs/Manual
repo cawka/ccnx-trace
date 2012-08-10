@@ -1,27 +1,27 @@
 Running CCNX-Trace
 ------------------
 
-o In a collection of ccn nodes, all the machines should run the trace_server. The client expresses 
-interest for /trace/<namespace>. The trace_server asks local ccnd to forward all 
+o In a collection of ccn nodes, all the machines should run the ccn_traced. The client expresses 
+interest for /trace/<namespace>. The ccn_traced asks local ccnd to forward all 
 trace interests to it so that it can handle them properly. Therefore if any node is  
-not running the trace_server, local ccnd will drop the packet.
+not running the ccn_traced, local ccnd will drop the packet.
 
-o At the client machine, both trace_server and trace_client has to be run. Without the server,
+o At the client machine, both ccn_traced and trace has to be run. Without the server,
 the client would timeout.
 
 
 Configuring a testbed for ccnx-trace
 -------------------------------------
 
-o Run trace_server on each node. This program does not require any argument. This can be
+o Run ccn_traced on each node. This program does not require any argument. This can be
 also run in the background.
 
-    $ trace_server &
+    $ ccn_traced &
 
-o At the client, run the trace_client. It takes two arguments, -u for the URI to trace to and
+o At the client, run the trace. It takes two arguments, -u for the URI to trace to and
 -t for timeout. The usage can be seen using
 
-    $ trace_client -h 
+    $ trace -h 
 
 
 o Note that ccnx has a default timeout value of 4 secs for an interest packet.
@@ -34,15 +34,23 @@ o Make sure you have a route to the content you are trying to trace to. For exam
 
 Output
 ------
+
+The left hand side number of the hop count. The right hand side shows the id of
+the node. Note that currently this is IP address, but can be replaced by any
+unique ID.
+
+
 The output means the following:
+
 o 192.168.1.1:LOCAL
     * The content is locally published at 192.168.1.1
 
-o 192.168.1.1 -> TIMEOUT TO 192.168.1.2
+o 0: 192.168.1.1 
+  1: TIMEOUT TO 192.168.1.2
     * Timeout between 192.168.1.1 and 192.168.1.2
 
 o 192.168.1.1: NO SUCH CONTENT
-    * The namespace is ok, the interest got routed properly. However, the node
+    * The namespace is ok and the interest got routed properly. However, the node
     does not publish any such content
 
 o 192.168.1.1: NO ROUTE
@@ -53,4 +61,3 @@ o Did not receive any reply
     server is running.
     * Or the network is taking more time than a single timeout to respond. Try 
     increasing the timeout.
-Node -> Intermediate 

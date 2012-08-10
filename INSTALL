@@ -17,7 +17,6 @@
     $ sudo make install
 
 
-
  UNINSTALLATION
  --------------
  The program can be uninstalled using make uninstall.

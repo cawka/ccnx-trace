@@ -550,13 +550,13 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
         fprintf(stderr, "Did not receive answer for trace to %s\n", new_interest_name);
 
         //if we did not receive answer, set the answer
-        fwd_reply[fwd_list_index] = malloc(sizeof (char *)* (strlen(remote_ip) + strlen("TIMEOUT TO")+1));
+        fwd_reply[fwd_list_index] = malloc(sizeof (char *)* (strlen(remote_ip) + strlen("~TIMEOUT TO")+1));
         if (fwd_reply[fwd_list_index] == NULL)
         {
             printf("Could not allocate memory for timeout reply message\n");
             exit(1);
         }
-        sprintf(fwd_reply[fwd_list_index], "%s%s", "TIMEOUT TO", remote_ip) ;
+        sprintf(fwd_reply[fwd_list_index], "%s%s", "~TIMEOUT TO", remote_ip) ;
         *num_reply = 1;
     }
 

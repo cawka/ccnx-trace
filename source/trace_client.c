@@ -47,9 +47,9 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     //data structure for the reply packet
     struct data reply;
 
-char *delims = ":";
-int hop = 0;
-char *result = NULL;
+    char *delims = ":";
+    int hop = 0;
+    char *result = NULL;
     //switch on type of event
     switch (kind)
     {
@@ -90,22 +90,22 @@ char *result = NULL;
             reply.fwd_message[i] = malloc(sizeof(char) * reply.message_length[i]);
             memcpy(reply.fwd_message[i], ptr, reply.message_length[i]);
             ptr += reply.message_length[i];
-            #ifdef DEBUG
+#ifdef DEBUG
             printf("%s\n", reply.fwd_message[i]);
-            #endif
+#endif
             //break the forward messages and print them
-            
+
             hop = 0;
             result = NULL;
-        printf("\n**********Route %d************\n", i);
-        result = strtok(reply.fwd_message[i], delims);
-        while( result != NULL ) {
-            printf( "%d: %s \n", hop, result );
+            printf("\n**********Route %d************\n", i);
+            result = strtok(reply.fwd_message[i], delims);
+            while( result != NULL ) {
+                printf( "%d: %s \n", hop, result );
                 result = strtok( NULL, delims );
                 hop++;
-                }
+            }
 
-        printf("\n***************************\n");
+            printf("\n***************************\n");
             free(reply.fwd_message[i]);
         }
 

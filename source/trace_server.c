@@ -21,9 +21,9 @@
 
 #include "node_id.h"
 #include "version.h"
+#include "log.h"
 
-
-//#define DEBUG
+#define DEBUG
 
 char node_id[128] = {0};
 char *slash = "/";
@@ -35,6 +35,9 @@ int num_reply = 0;
 int recv_reply = 0;
 int processed_index = 0;
 
+//for logging
+FILE *logfile;
+int log_exist = 0;
 
 //data packet
 struct data
@@ -60,13 +63,17 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
 
     if (res < 0)
     {
-        fprintf(stderr, "find_interest_name: Could not get interest name. Res = %d\n", res);
+        fprintf(logfile, "find_interest_name: Could not get interest name. Res = %d\n", res);
+        fclose(logfile);
+        return(1);
     }
 
     struct ccn_charbuf *uri = ccn_charbuf_create();
     ccn_uri_append(uri, name->buf, name->length, 1);
+    printf("Incoming interest %s\n", ccn_charbuf_as_string(uri));
 #ifdef DEBUG
-    printf("uri = %s\n", ccn_charbuf_as_string(uri));
+    fprintf(logfile, "\nuri = %s\n", ccn_charbuf_as_string(uri));
+    fflush(logfile);
 #endif
 
     //copy the name over to a string, set the reset pointer to string
@@ -84,16 +91,16 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     fwd_path = strtok(NULL, "~");
     if (base_uri == NULL || fwd_path == NULL)
     {
-        fprintf(stderr, "Can not split URI\n");
+        fprintf(logfile, "Can not split URI\n");
+        fclose(logfile);
+        return(1);
     }
-
-    printf("base uri %s fwd_path %s \n", base_uri, fwd_path);
-
 
     //get the last component, copy to int, get the id, copy to path
     char *last_component = strrchr(uri_string, '/') + 1;
 #ifdef DEBUG
-    printf("last component %s fwd_path %s len %Zu \n", last_component, fwd_path,  strlen(last_component));
+    fprintf(logfile, "base uri %s last component %s fwd_path %s len %Zu \n", base_uri, last_component, fwd_path,  strlen(last_component));
+    fflush(logfile);
 #endif
 
     //set the last_comp and fwd_path to the passed vars, add a / at the end of
@@ -106,12 +113,13 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     //uri - -len of ccnx:/trace - len of last component - 1 for the / + 1 for the \n
     int truncated_uri_length =  strlen(uri_string) - strlen(last_component) - 1 ;
 #ifdef DEBUG
-    printf("uri length%d\n", truncated_uri_length);
+    fprintf(logfile, "uri length%d\n", truncated_uri_length);
+    fflush(logfile);
 #endif
     *interest_name = calloc(truncated_uri_length + 1, sizeof(char)) ;
     if (interest_name == NULL)
     {
-        fprintf(stderr, "Can not allocate memory for interest_name\n");
+        fprintf(logfile, "Can not allocate memory for interest_name\n");
         exit(1);
     }
     strncpy((char *)*interest_name, uri_string, truncated_uri_length);
@@ -135,7 +143,8 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
     //-----------------------------------------------------------------------//
 
 #ifdef DEBUG
-    printf("finding faces for %s\n", interest_name);
+    fprintf(logfile, "finding faces for %s\n", interest_name);
+    fflush(logfile);
 #endif
 
     char *command_find_faces = (char *) malloc(strlen((const char *)interest_name)+100);
@@ -161,14 +170,16 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
         sprintf(command_find_faces, "%s%s%s", "ccndstatus|grep -w '", search_str, "'|awk -F 'face:' '{print $2}' |awk '{print $1}'|sort|uniq");
 
 #ifdef DEBUG
-        printf("%s\n", command_find_faces);
+        fprintf(logfile, "%s\n", command_find_faces);
+        fflush(logfile);
 #endif
 
         //execute the command
         FILE *fp = popen(command_find_faces, "r");
         if (fp == NULL)
         {
-            printf("can not execute ccndstatus\n");
+            fprintf(logfile, "can not execute ccndstatus\n");
+            fclose(logfile);
             exit(1);
         }
 
@@ -191,24 +202,26 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             *longest_match = malloc(sizeof(char) * strlen(search_str) + 1);
             if (longest_match== NULL)
             {
-                fprintf(stderr, "Can not allocate memory for longest_match\n");
+                fprintf(logfile, "Can not allocate memory for longest_match\n");
+                fclose(logfile);
                 exit(1);
             }
             strcpy((char *)*longest_match, search_str);
 
             //find the fib entry that matched
-
-            sprintf(command_fib_entry, "%s%s%s", "ccndstatus|grep -w '", search_str, "'|awk '{printf $1}'");
+            sprintf(command_fib_entry, "%s%s%s", "ccndstatus|grep -w '", search_str, "'|awk '{print $1}'|head -n 1");
 
 #ifdef DEBUG
-            printf("%s\n", command_fib_entry);
+            fprintf(logfile, "%s\n", command_fib_entry);
+            fflush(logfile);
 #endif
 
             //execute the command
             fp = popen(command_fib_entry, "r");
             if (fp == NULL)
             {
-                printf("can not execute ccndstatus\n");
+                fprintf(logfile, "can not execute ccndstatus\n");
+                fclose(logfile);
                 exit(1);
             }
 
@@ -218,11 +231,13 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             while (fgets(readbuf, 1024, fp) != NULL)
             {
                 *matching_fib_entry = calloc(strlen(readbuf)+1, sizeof(char));
-                strncpy(*matching_fib_entry, readbuf, strlen(readbuf));
+                //don't copy the newline
+                strncpy(*matching_fib_entry, readbuf, strlen(readbuf)-1);
             }
             fclose(fp);
 #ifdef DEBUG
-            printf("longest match %s strlen %Zu, fib entry %s length %Zu\n", *longest_match,  strlen((const char *)*longest_match), *matching_fib_entry, strlen((const char *)*matching_fib_entry));
+            fprintf(logfile,"longest match %s strlen %Zu, fib entry %s length %Zu\n", *longest_match,  strlen((const char *)*longest_match), *matching_fib_entry, strlen((const char *)*matching_fib_entry));
+            fflush(logfile);
 #endif
             free(search_str);
             break;
@@ -230,19 +245,22 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
 
         //else, remove last component and retry
 #ifdef DEBUG
-        printf("\nstring before removal of last comp: %s\n", search_str);
+        fprintf(logfile, "string before removal of last comp: %s\n", search_str);
+        fflush(logfile);
 #endif
 
         char *last_component = strrchr(search_str, '/');
         if (last_component != NULL)
         {
 #ifdef DEBUG
-            printf("last component %s len %Zu\n", last_component, strlen(last_component));
+            fprintf(logfile, "last component %s len %Zu\n", last_component, strlen(last_component));
+            fflush(logfile);
 #endif
             *last_component = '\0';
         }
 #ifdef DEBUG
-        printf("string after removal: %s length: %Zu default route flag %d\n", search_str, strlen(search_str), default_rt_flag);
+        fprintf(logfile, "string after removal: %s length: %Zu default route flag %d\n", search_str, strlen(search_str), default_rt_flag);
+        fflush(logfile);
 #endif
         if (strcmp(search_str, "ccnx:") == 0 && default_rt_flag == 0)
         {
@@ -255,8 +273,10 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
     }
 
 #ifdef DEBUG
-    printf("number of faces %d\n", face_index);
+    fprintf(logfile, "number of faces %d\n", face_index);
+    fflush(logfile);
 #endif
+
     *num_faces = face_index;
     free(command_find_faces);
     free(command_fib_entry);
@@ -280,13 +300,14 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
     {
         sprintf(command2, "%s%s%s", "ccndstatus |grep -w 'pending'|grep -w 'face: ", face[iter1], "'|awk -F 'remote:' '{print $2}' |awk -F ':' '{print $1}'|tr -s '\\n'|head -n 1");
 #ifdef DEBUG
-        printf("Command2 %s\n", command2);
+        fprintf(logfile, "Command_face %s\n", command2);
 #endif
         //execute command
         FILE *fp2 = popen(command2, "r");
         if (fp2 == NULL)
         {
-            printf("can not execute ccndstatus\n");
+            fprintf(logfile, "can not execute ccndstatus\n");
+            fclose(logfile);
             exit(1);
         }
 
@@ -299,14 +320,15 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
             return_ips[return_ip_index] = malloc(strlen(fib_entry)+1);
             if (return_ips[return_ip_index]== NULL)
             {
-                fprintf(stderr, "Can not allocate memory for storing remote IP\n");
+                fprintf(logfile, "Can not allocate memory for storing remote IP\n");
+                fclose(logfile);
                 exit(1);
             }
             memset(return_ips[return_ip_index],0,(strlen(fib_entry)+1));
             strncpy(return_ips[return_ip_index], fib_entry, strlen(fib_entry));
             return_ip_index++;
 #ifdef DEBUG
-            printf("storing ip address %s\n", fib_entry);
+            fprintf(logfile, "storing ip address %s\n", fib_entry);
 #endif
         }
     }
@@ -327,7 +349,7 @@ char* swap_random(const unsigned char *interest_name, int interest_random_comp, 
     //-----------------------------------------------------------------------//
 
 #ifdef DEBUG
-    printf("Swap random, interest name %s  random %d fwd_path %s\n", interest_name, interest_random_comp, fwd_path);
+    fprintf(logfile, "Swap random, interest name %s  random %d fwd_path %s\n", interest_name, interest_random_comp, fwd_path);
 #endif
 
     int rand_comp = rand();
@@ -343,12 +365,14 @@ char* swap_random(const unsigned char *interest_name, int interest_random_comp, 
     *new_interest_name = calloc(strlen(trace) + strlen((const char *)interest_name) + strlen(slash) + strlen(new_rand_comp) + strlen(tilde) + strlen(new_fwd_path) + 1, sizeof(char));
     if (new_interest_name == NULL)
     {
-        fprintf(stderr, "Can not allocate memory for new_interest_name\n");
+        fprintf(logfile, "Can not allocate memory for new_interest_name\n");
+        fclose(logfile);
         exit(1);
     }
     sprintf(*new_interest_name, "%s%s%s%s%s%s", trace, interest_name, slash, new_rand_comp, tilde, new_fwd_path);
 #ifdef DEBUG
-    printf("Forwarding interest %s with random component %d\n\n\n", *new_interest_name, rand_comp);
+    fprintf(logfile, "Forwarding interest %s with random component %d\n\n\n", *new_interest_name, rand_comp);
+    fflush(logfile);
 #endif
 
     //housekeeping
@@ -371,19 +395,22 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
         char *add_route = malloc(add_route_length);
         if (add_route == NULL)
         {
-            fprintf(stderr, "Can not allocate memory for add route command\n");
+            fprintf(logfile, "Can not allocate memory for add route command\n");
+            fclose(logfile);
             exit(1);
         }
         sprintf(add_route, "%s%s%s%s", "ccndc add ", forwarding_interest_name, " tcp", fwd_ip);
 #ifdef DEBUG
-        printf("adding route %s\n", add_route);
+        fprintf(logfile, "adding route %s\n", add_route);
+        fflush(logfile);
 #endif
 
         //execute the command
         FILE *fp = popen(add_route, "r");
         if (fp == NULL)
         {
-            printf("can not add route\n");
+            fprintf(logfile, "can not add route\n");
+            fclose(logfile);
             exit(1);
         }
         pclose(fp);
@@ -397,20 +424,23 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
         char *del_route = malloc(del_route_length);
         if (del_route == NULL)
         {
-            fprintf(stderr, "Can not allocate memory for del route command\n");
+            fprintf(logfile, "Can not allocate memory for del route command\n");
+            fclose(logfile);
             exit(1);
         }
 
         sprintf(del_route, "%s%s%s%s", "ccndc del ", forwarding_interest_name, " tcp", fwd_ip);
 #ifdef DEBUG
-        printf("deleting route %s\n", del_route);
+        fprintf(logfile,"deleting route %s\n", del_route);
+        fflush(logfile);
 #endif
 
         //execute the command
         FILE *fp = popen(del_route, "r");
         if (fp == NULL)
         {
-            printf("can not add route\n");
+            fprintf(logfile, "can not add route\n");
+            fclose(logfile);
             exit(1);
         }
         pclose(fp);
@@ -437,7 +467,8 @@ int construct_trace_response(struct ccn *h, struct ccn_charbuf *data,
                              pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name]);
     if (res == -1)
     {
-        fprintf(stderr, "Can not copy interest name to buffer\n");
+        fprintf(logfile, "Can not copy interest name to buffer\n");
+        fclose(logfile);
         exit(1);
     }
 
@@ -445,7 +476,8 @@ int construct_trace_response(struct ccn *h, struct ccn_charbuf *data,
     res = ccn_sign_content(h, data, name, &sp,  mymsg, size);
     if (res == -1)
     {
-        fprintf(stderr, "Can not sign content\n");
+        fprintf(logfile, "Can not sign content\n");
+        fclose(logfile);
         exit(1);
     }
 
@@ -475,24 +507,29 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     res = ccn_name_from_uri(name_fwd, new_interest_name);
     if (res < 0)
     {
-        fprintf(stderr, "can not convert new interest name %s\n", new_interest_name);
+        fprintf(logfile, "can not convert new interest name %s\n", new_interest_name);
+        fclose(logfile);
         exit(1);
     }
 
-#ifdef DEBUG
     printf("expressing interest for %s\n", new_interest_name);
+#ifdef DEBUG
+    fprintf(logfile, "expressing interest for %s\n", new_interest_name);
+    fflush(logfile);
 #endif
 
     struct ccn_charbuf *ccnb_fwd = ccn_charbuf_create();
     if (ccnb_fwd == NULL)
     {
-        fprintf(stderr, "Can not allocate memory for interest\n");
+        fprintf(logfile, "Can not allocate memory for interest\n");
+        fclose(logfile);
         exit(1);
     }
     res = ccn_name_from_uri(ccnb_fwd, (const char *)new_interest_name);
     if (res == -1)
     {
-        fprintf(stderr, "Failed to assign name to interest");
+        fprintf(logfile, "Failed to assign name to interest");
+        fclose(logfile);
         exit(1);
     }
 
@@ -500,7 +537,8 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     struct ccn *ccn_fwd = ccn_create();
     if (ccn_fwd == NULL)
     {
-        fprintf(stderr, "Can not create ccn handle\n");
+        fprintf(logfile, "Can not create ccn handle\n");
+        fclose(logfile);
         exit(1);
     }
 
@@ -508,19 +546,22 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     res = ccn_connect(ccn_fwd, NULL);
     if (res == -1)
     {
-        fprintf(stderr, "Could not connect to ccnd... exiting\n");
+        fprintf(logfile, "Could not connect to ccnd... exiting\n");
+        fclose(logfile);
         exit(1);
     }
 
 #ifdef DEBUG
-    printf("Connected to CCND, return code: %d\n", res);
+    fprintf(logfile, "Connected to CCND, return code: %d\n", res);
+    fflush(logfile);
 #endif
 
     //allocate buffer for response
     struct ccn_charbuf *resultbuf = ccn_charbuf_create();
     if (resultbuf == NULL)
     {
-        fprintf(stderr, "Can not allocate memory for URI\n");
+        fprintf(logfile, "Can not allocate memory for URI\n");
+        fclose(logfile);
         exit(1);
     }
 
@@ -536,24 +577,28 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
 
     if (strstr(new_interest_name, double_node_id)!= NULL)
     {
-        timeout_ms *= 2;
+        timeout_ms *= 1.2;
     }
 #ifdef DEBUG
-    printf("checking for local client%s\n", double_node_id);
-    printf("timeout_ms %d\n\n", timeout_ms);
+    fprintf(logfile, "checking for local client%s\n", double_node_id);
+    fprintf(logfile, "timeout_ms %d\n\n", timeout_ms);
+    fflush(logfile);
 #endif
 
     //express interest
     res = ccn_get(ccn_fwd, ccnb_fwd, NULL, timeout_ms, resultbuf, &pcobuf, NULL, 0);
+        printf("Did not receive answer for trace to %s\n", new_interest_name);
     if (res == -1)
     {
-        fprintf(stderr, "Did not receive answer for trace to %s\n", new_interest_name);
+        fprintf(logfile, "Did not receive answer for trace to %s\n", new_interest_name);
+        fflush(logfile);
 
         //if we did not receive answer, set the answer
         fwd_reply[fwd_list_index] = malloc(sizeof (char *)* (strlen(remote_ip) + strlen("~TIMEOUT TO")+1));
         if (fwd_reply[fwd_list_index] == NULL)
         {
-            printf("Could not allocate memory for timeout reply message\n");
+            fprintf(logfile, "Could not allocate memory for timeout reply message\n");
+            fclose(logfile);
             exit(1);
         }
         sprintf(fwd_reply[fwd_list_index], "%s%s", "~TIMEOUT TO", remote_ip) ;
@@ -571,9 +616,9 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
         //check if received some data
         if (length == 0)
         {
-            fprintf(stderr, "Received empty answer for trace to %s\n", new_interest_name);
 #ifdef DEBUG
-            fprintf(stderr, "Received empty answer for trace to URI: %s\n", new_interest_name);
+            fprintf(logfile, "Received empty answer for trace to URI: %s\n", new_interest_name);
+            fflush(logfile);
 #endif
         }
 
@@ -583,7 +628,8 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
         mymsg.message_length = malloc(sizeof(uint32_t)*mymsg.num_message);
         if (mymsg.message_length == NULL)
         {
-            printf("Could not allocate memory for storing fwd reply message length\n");
+            fprintf(logfile, "Could not allocate memory for storing fwd reply message length\n");
+            fclose(logfile);
             exit(1);
         }
         for (i=0; i < mymsg.num_message; i++)
@@ -596,7 +642,8 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
         mymsg.fwd_message = malloc(sizeof(char *) * mymsg.num_message);
         if (mymsg.fwd_message == NULL)
         {
-            printf("Could not allocate memory for fwd reply message number\n");
+            fprintf(logfile, "Could not allocate memory for fwd reply message number\n");
+            fclose(logfile);
             exit(1);
         }
         for (i=0; i < mymsg.num_message; i++)
@@ -604,12 +651,14 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
             mymsg.fwd_message[i] = malloc (sizeof(char) * mymsg.message_length[i]);
             if (mymsg.fwd_message[i] == NULL)
             {
-                printf("Could not allocate memory for fwd reply message data\n");
+                fprintf(logfile, "Could not allocate memory for fwd reply message data\n");
+                fclose(logfile);
                 exit(1);
             }
             strncpy(mymsg.fwd_message[i], (const char *)ptr, mymsg.message_length[i]);
             ptr += mymsg.message_length[i];
-            printf("%s\n", mymsg.fwd_message[i]);
+            fprintf(logfile, "%s\n", mymsg.fwd_message[i]);
+            fflush(logfile);
         }
 
         //set the replies
@@ -618,7 +667,8 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
             fwd_reply[fwd_list_index + i] = malloc(sizeof (char *)*mymsg.message_length[i]);
             if (fwd_reply[fwd_list_index + i] == NULL)
             {
-                printf("Could not allocate memory for reply\n");
+                fprintf(logfile, "Could not allocate memory for reply\n");
+                fclose(logfile);
                 exit(1);
             }
             sprintf(fwd_reply[fwd_list_index + i], "%s", mymsg.fwd_message[i]);
@@ -697,8 +747,16 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         //received matching interest
         //get the interest name and random component from incoming packet
         res = find_interest_name(info->interest_ccnb, info->pi, &interest_name, &interest_random_comp, &forward_path);
-#ifdef DEBUG
+        if (res !=0)
+        {
+            fprintf(logfile, "Could not parse interest name\n");
+            fclose(logfile);
+            break;
+        }
         printf("Interest name %s, random is %d forward_path is %s \n", interest_name, interest_random_comp, forward_path);
+#ifdef DEBUG
+        fprintf(logfile, "Interest name %s, random is %d forward_path is %s \n", interest_name, interest_random_comp, forward_path);
+        fflush(logfile);
 #endif
         sprintf(interest_random_comp_string, "%d", interest_random_comp);
 
@@ -709,7 +767,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         sprintf(node_id_with_slash, "%s%s%s", slash, node_id, slash);
         if (strcmp(node_id_with_slash, (const char *)forward_path) !=0 && strstr((const char *)forward_path, node_id_with_slash) !=NULL)
         {
-            printf("came from remote client and duplicate\n");
+            fprintf(logfile, "came from remote client and duplicate\n");
+            fflush(logfile);
             dup_flag = 1;
             break;
         }
@@ -720,7 +779,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             if (processed[iter] == interest_random_comp)
             {
 #ifdef DEBUG
-                printf("duplicate interest, random value = %d\n",processed[iter]);
+                fprintf(logfile, "duplicate interest, random value = %d\n",processed[iter]);
+                fflush(logfile);
 #endif
                 dup_flag = 1;
                 break;
@@ -740,7 +800,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 #ifdef DEBUG
         for (i=0; i <number_faces; i++)
         {
-            printf("face %s is %s\n", faces[i], longest_prefix);
+            fprintf(logfile, "face %s is %s\n", faces[i], longest_prefix);
+            fflush(logfile);
         }
 #endif
 
@@ -752,16 +813,19 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             return_data.message_length =  malloc(sizeof(uint32_t) * 1);
             if (return_data.message_length == NULL)
             {
-                fprintf(stderr, "Can not allocate memory for reply message, field 1\n");
+                fprintf(logfile, "Can not allocate memory for reply message, field 1\n");
+                fclose(logfile);
                 exit(1);
             }
+printf("No route found\n");
             //replay appropriately
             return_data.message_length[0] = strlen(node_id)+1 + strlen(":NO ROUTE FOUND") ;
             return_data.fwd_message = malloc(sizeof(char *) * 1);
             return_data.fwd_message[0] = malloc(strlen(node_id)+1 + strlen(":NO ROUTE FOUND"));
             if (return_data.fwd_message == NULL|| return_data.fwd_message[0] == NULL)
             {
-                fprintf(stderr, "Can not allocate memory for reply message, data\n");
+                fprintf(logfile, "Can not allocate memory for reply message, data\n");
+                fclose(logfile);
                 exit(1);
             }
             sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":NO ROUTE FOUND");
@@ -772,9 +836,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         {
             //get the number of remote ips
             res = find_remote_ip(faces, number_faces, remote_ips, &num_remote_ips);
+            printf("Number of remote IP %d\ninterest_name %s length: %Zu\nlongest_prefix %s length %Zu\nmatching fib_entry %s length %Zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
+
 #ifdef DEBUG
-            printf("Number of remote IP %d interest_name %s longest_prefix %s matching fib_entry%s\n", num_remote_ips, interest_name, longest_prefix, matching_fib_entry);
+            fprintf(logfile, "Number of remote IP %d\ninterest_name %s length: %Zu\nlongest_prefix %s length %Zu\nmatching fib_entry %s length %Zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
+            fflush(logfile);
+
 #endif
+
 
             //if no remote ip found, this is local
             if (num_remote_ips == 0)
@@ -782,8 +851,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 //does the name matches with longest prefix(without ccnx:)? otherwise, no such content
                 if (strcmp((const char *)interest_name, (const char *)matching_fib_entry+5) == 0)
                 {
-#ifdef DEBUG
                     printf("This is local\n");
+
+#ifdef DEBUG
+                    fprintf(logfile, "This is local\n");
+                    fflush(logfile);
 #endif
                     //reply appropriately
                     return_data.num_message = 1;
@@ -801,16 +873,19 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     return_data.message_length =  malloc(sizeof(uint32_t) * 1);
                     if (return_data.message_length == NULL)
                     {
-                        fprintf(stderr, "Can not allocate memory for reply message, field 1\n");
+                        fprintf(logfile, "Can not allocate memory for reply message, field 1\n");
+                        fclose(logfile);
                         exit(1);
                     }
+printf("No such content \n");
                     //reply appropriately
                     return_data.message_length[0] = strlen(node_id)+1 + strlen(":NO SUCH CONTENT") ;
                     return_data.fwd_message = malloc(sizeof(char *) * 1);
                     return_data.fwd_message[0] = malloc(strlen(node_id)+1 + strlen(":NO SUCH CONTENT"));
                     if (return_data.fwd_message == NULL|| return_data.fwd_message[0] == NULL)
                     {
-                        fprintf(stderr, "Can not allocate memory for reply message, data\n");
+                        fprintf(logfile, "Can not allocate memory for reply message, data\n");
+                        fclose(logfile);
                         exit(1);
                     }
                     sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":NO SUCH CONTENT");
@@ -821,8 +896,10 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             //we found some remote ips for this face
             else
             {
-#ifdef DEBUG
                 printf("adding route and forwarding, expecting %d replies\n", num_remote_ips);
+#ifdef DEBUG
+                fprintf(logfile, "adding route and forwarding, expecting %d replies\n", num_remote_ips);
+                fflush(logfile);
 #endif
                 num_reply = num_remote_ips;
 
@@ -832,8 +909,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     //swap the random string
                     swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
                     sprintf(new_interest_random_comp_str, "%d", new_interest_random_comp);
-#ifdef DEBUG
                     printf("new interest name %s\n", new_interest_name);
+
+#ifdef DEBUG
+                    fprintf(logfile, "new interest name %s\n", new_interest_name);
+                    fflush(logfile);
 #endif
                     //add to the processed list
                     processed[processed_index] = new_interest_random_comp;
@@ -851,7 +931,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                         res = ccn_name_from_uri(name_fwd, new_interest_name);
                         if (res < 0)
                         {
-                            fprintf(stderr, "can not convert new interest name %s\n", new_interest_name);
+                            fprintf(logfile, "can not convert new interest name %s\n", new_interest_name);
+                            fclose(logfile);
                             exit(1);
                         }
 
@@ -880,9 +961,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 printf("\n\n");
                 for (i = 0; i < fwd_list_index; i++)
                 {
-                    printf("Reply is %s \n", fwd_reply[i]);
+                    fprintf(logfile, "Reply is %s \n", fwd_reply[i]);
                 }
                 printf("\n\n");
+
+                fflush(logfile);
 #endif
 
                 //process and store the replies in a data packet
@@ -892,7 +975,9 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 
                 if (return_data.message_length == NULL)
                 {
-                    fprintf(stderr, "Can not allocate memory for reply message leangth\n");
+
+                    fprintf(logfile, "Can not allocate memory for reply message leangth\n");
+                    fclose(logfile);
                     exit(1);
                 }
 
@@ -904,12 +989,15 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen("~")+ strlen(fwd_reply[i]) + 1);
                     if (return_data.fwd_message[i] == NULL)
                     {
-                        fprintf(stderr, "Can not allocate memory for reply message number %d\n", i);
+                        fprintf(logfile, "Can not allocate memory for reply message number %d\n", i);
+                        fclose(logfile);
+
                         exit(1);
                     }
                     sprintf(return_data.fwd_message[i], "%s%s%s",  node_id, "~", fwd_reply[i]);
 #ifdef DEBUG
-                    printf("%s\n", return_data.fwd_message[i]);
+                    fprintf(logfile, "%s\n", return_data.fwd_message[i]);
+                    fflush(logfile);
 #endif
                 }
             }
@@ -917,14 +1005,17 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 
         //now we have the messages, pack them and send them back
 #ifdef DEBUG
-        printf("return_data.num_message = %d\n", return_data.num_message);
+        fprintf(logfile, "return_data.num_message = %d\n", return_data.num_message);
+        fflush(logfile);
 #endif
 
         for (iter = 0; iter<return_data.num_message; iter++)
         {
 #ifdef DEBUG
-            printf("message length = %d\n", return_data.message_length[iter]);
-            printf("message = %s\n", return_data.fwd_message[iter]);
+            fprintf(logfile, "message length = %d\n", return_data.message_length[iter]);
+            fprintf(logfile, "message = %s\n", return_data.fwd_message[iter]);
+
+            fflush(logfile);
 #endif
             fwd_message_length += return_data.message_length[iter];
         }
@@ -934,7 +1025,9 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         buffer = malloc(sizeof(uint32_t)* (1+ return_data.num_message) + fwd_message_length);
         if (buffer == NULL)
         {
-            fprintf(stderr, "Can not allocate memory for return buffer %d\n", i);
+            fprintf(logfile, "Can not allocate memory for return buffer %d\n", i);
+            fclose(logfile);
+
             exit(1);
         }
 
@@ -987,19 +1080,24 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         break;
     }
     case CCN_UPCALL_INTEREST_TIMED_OUT:
-        printf("request timed out - retrying\n");
+        fprintf(logfile, "request timed out - retrying\n");
+
+        fflush(logfile);
         return CCN_UPCALL_RESULT_REEXPRESS;
 
     case CCN_UPCALL_CONTENT_UNVERIFIED:
-        printf("Could not verify content");
+        fprintf(logfile, "Could not verify content");
+        fflush(logfile);
         return CCN_UPCALL_RESULT_ERR;
 
     case CCN_UPCALL_CONTENT_BAD:
-        printf("Bad content\n");
+        fprintf(logfile, "Bad content\n");
+        fflush(logfile);
         return CCN_UPCALL_RESULT_ERR;
 
     default:
-        printf("Unexpected response\n");
+        fprintf(logfile, "Unexpected response\n");
+        fflush(logfile);
         return CCN_UPCALL_RESULT_ERR;
     }
     return CCN_UPCALL_FINAL;
@@ -1027,13 +1125,35 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    //check if logfile is present, if yes, open in append mode
+    //write mode otherwise
+
+    logfile = fopen(LOGFILE, "r");
+    if (logfile != NULL)
+    {
+        fclose(logfile);
+        log_exist = 1;
+    }
+
+    if (log_exist == 1)
+    {
+        logfile = fopen(LOGFILE, "a");
+    }
+    else
+    {
+        logfile = fopen(LOGFILE, "w");
+    }
+
+
     //seed the random
     srand ((unsigned int)time (NULL)*getpid());
 
     //get the node_id, IP address for now
     if (get_ip_addresses(node_id) == NULL)
     {
-        fprintf(stderr, "Can not get node_id\n");
+        printf("Can not get node_id\n");
+        fprintf(logfile, "Can not get node_id\n");
+        fclose(logfile);
         exit(1);
     }
     //print node id
@@ -1042,11 +1162,12 @@ int main(int argc, char **argv)
     //create ccn handle
     struct ccn *ccn = NULL;
 
-    //connect to CCN
+    //connect to ccnd
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1)
     {
-        fprintf(stderr, "Could not connect to ccnd");
+        fprintf(logfile, "Could not connect to ccnd");
+        fclose(logfile);
         exit(1);
     }
 
@@ -1058,7 +1179,8 @@ int main(int argc, char **argv)
     res = ccn_name_from_uri(prefix, "/trace");
     if (res < 0)
     {
-        fprintf(stderr, "Can not convert name to URI\n");
+        fprintf(logfile, "Can not convert name to URI\n");
+        fclose(logfile);
         exit(1);
     }
 
@@ -1071,7 +1193,8 @@ int main(int argc, char **argv)
     res = ccn_set_interest_filter(ccn, prefix, &in_interest);
     if (res < 0)
     {
-        fprintf(stderr, "Failed to register interest (res == %d)\n", res);
+        fprintf(logfile, "Failed to register interest (res == %d)\n", res);
+        fclose(logfile);
         exit(1);
     }
 

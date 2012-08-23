@@ -105,10 +105,10 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 hop++;
             }
 
-            printf("\n***************************\n");
             free(reply.fwd_message[i]);
         }
 
+        printf("\n***************************\n");
         //free the memory we allocated
         free(reply.message_length);
         free(reply.fwd_message);
@@ -120,7 +120,9 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         //default timeout in ccn is 4 secs, number of retries are decided by timeout argument
         //devided by 4 secs.
     case CCN_UPCALL_INTEREST_TIMED_OUT:
+#ifdef DEBUG
         printf("request timed out - retrying\n");
+#endif
         return CCN_UPCALL_RESULT_REEXPRESS;
 
     case CCN_UPCALL_CONTENT_UNVERIFIED:
@@ -162,7 +164,7 @@ int main(int argc, char *argv[])
     int opt;
     char *URI = NULL;
     char *timeout = NULL;
-    int timeout_ms = 30000;
+    int timeout_ms = 60000;
     int res = 0;
 
     //check if user supplied uri to trace to, read the arguments and check them
@@ -228,6 +230,15 @@ int main(int argc, char *argv[])
         skip = 5;
     }
 
+
+    if(strncmp("ccnx:/trace", URI, 11) == 0 || strncmp("/trace", URI, 6)== 0)
+    {
+        printf("Don't include /trace in the URI\n");
+        usage();  
+    }
+
+
+
     //if URI does not begins with /, exit
     if (URI[skip] != '/')
     {
@@ -245,6 +256,7 @@ int main(int argc, char *argv[])
 
     //allocate memory for
     //trace URI = /trace/user_input/random_number/~/forward_path(ID of self)
+
     char *TRACE_URI = (char *) calloc(strlen(TRACE_PREFIX)+ strlen(URI+skip) + 1 + 100 + 1 + 1 +128 + 1, sizeof(char)) ; //find size of rand
     if(TRACE_URI == NULL)
     {
@@ -260,6 +272,7 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
     printf("%s\n", TRACE_URI);
 #endif
+
 
     //allocate memory for interest
     struct ccn_charbuf *ccnb = ccn_charbuf_create();

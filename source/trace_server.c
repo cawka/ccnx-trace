@@ -23,7 +23,7 @@
 #include "version.h"
 
 
-//#define DEBUG
+#define DEBUG
 
 char node_id[128] = {0};
 char *slash = "/";
@@ -197,8 +197,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             strcpy((char *)*longest_match, search_str);
 
             //find the fib entry that matched
-
-            sprintf(command_fib_entry, "%s%s%s", "ccndstatus|grep -w '", search_str, "'|awk '{printf $1}'");
+            sprintf(command_fib_entry, "%s%s%s", "ccndstatus|grep -w '", search_str, "'|awk '{print $1}'|head -n 1");
 
 #ifdef DEBUG
             printf("%s\n", command_fib_entry);
@@ -218,7 +217,8 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             while (fgets(readbuf, 1024, fp) != NULL)
             {
                 *matching_fib_entry = calloc(strlen(readbuf)+1, sizeof(char));
-                strncpy(*matching_fib_entry, readbuf, strlen(readbuf));
+                //don't copy the newline
+                strncpy(*matching_fib_entry, readbuf, strlen(readbuf)-1);
             }
             fclose(fp);
 #ifdef DEBUG
@@ -773,7 +773,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             //get the number of remote ips
             res = find_remote_ip(faces, number_faces, remote_ips, &num_remote_ips);
 #ifdef DEBUG
-            printf("Number of remote IP %d interest_name %s longest_prefix %s matching fib_entry%s\n", num_remote_ips, interest_name, longest_prefix, matching_fib_entry);
+            printf("Number of remote IP %d\ninterest_name %s length: %Zu\nlongest_prefix %s length %Zu\nmatching fib_entry %s length %Zu\n", num_remote_ips, interest_name, strlen(interest_name), longest_prefix, strlen(longest_prefix), matching_fib_entry, strlen(matching_fib_entry));
 #endif
 
             //if no remote ip found, this is local

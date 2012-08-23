@@ -120,7 +120,9 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         //default timeout in ccn is 4 secs, number of retries are decided by timeout argument
         //devided by 4 secs.
     case CCN_UPCALL_INTEREST_TIMED_OUT:
+#ifdef DEBUG
         printf("request timed out - retrying\n");
+#endif
         return CCN_UPCALL_RESULT_REEXPRESS;
 
     case CCN_UPCALL_CONTENT_UNVERIFIED:

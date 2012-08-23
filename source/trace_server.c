@@ -594,14 +594,14 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
         fflush(logfile);
 
         //if we did not receive answer, set the answer
-        fwd_reply[fwd_list_index] = malloc(sizeof (char *)* (strlen(remote_ip) + strlen("TIMEOUT TO")+1));
+        fwd_reply[fwd_list_index] = malloc(sizeof (char *)* (strlen(remote_ip) + strlen("~TIMEOUT TO")+1));
         if (fwd_reply[fwd_list_index] == NULL)
         {
             fprintf(logfile, "Could not allocate memory for timeout reply message\n");
             fclose(logfile);
             exit(1);
         }
-        sprintf(fwd_reply[fwd_list_index], "%s%s", "TIMEOUT TO", remote_ip) ;
+        sprintf(fwd_reply[fwd_list_index], "%s%s", "~TIMEOUT TO", remote_ip) ;
         *num_reply = 1;
     }
 
@@ -978,7 +978,6 @@ printf("No such content \n");
 
                     fprintf(logfile, "Can not allocate memory for reply message leangth\n");
                     fclose(logfile);
-
                     exit(1);
                 }
 
@@ -986,8 +985,8 @@ printf("No such content \n");
                 return_data.fwd_message = malloc(sizeof(char *) * return_data.num_message);
                 for (i = 0; i < fwd_list_index; i++)
                 {
-                    return_data.message_length[i] = strlen(node_id) + strlen("")+ strlen(fwd_reply[i]) + 1;
-                    return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen("")+ strlen(fwd_reply[i]) + 1);
+                    return_data.message_length[i] = strlen(node_id) + strlen("~")+ strlen(fwd_reply[i]) + 1;
+                    return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen("~")+ strlen(fwd_reply[i]) + 1);
                     if (return_data.fwd_message[i] == NULL)
                     {
                         fprintf(logfile, "Can not allocate memory for reply message number %d\n", i);
@@ -995,7 +994,7 @@ printf("No such content \n");
 
                         exit(1);
                     }
-                    sprintf(return_data.fwd_message[i], "%s%s%s",  node_id, "", fwd_reply[i]);
+                    sprintf(return_data.fwd_message[i], "%s%s%s",  node_id, "~", fwd_reply[i]);
 #ifdef DEBUG
                     fprintf(logfile, "%s\n", return_data.fwd_message[i]);
                     fflush(logfile);

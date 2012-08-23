@@ -61,6 +61,7 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     if (res < 0)
     {
         fprintf(stderr, "find_interest_name: Could not get interest name. Res = %d\n", res);
+        return(1);
     }
 
     struct ccn_charbuf *uri = ccn_charbuf_create();
@@ -85,6 +86,7 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     if (base_uri == NULL || fwd_path == NULL)
     {
         fprintf(stderr, "Can not split URI\n");
+        return(1);
     }
 
     printf("base uri %s fwd_path %s \n", base_uri, fwd_path);
@@ -697,6 +699,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         //received matching interest
         //get the interest name and random component from incoming packet
         res = find_interest_name(info->interest_ccnb, info->pi, &interest_name, &interest_random_comp, &forward_path);
+        if (res !=0)
+        {
+            printf("Could not parse interest name\n");
+            break;
+        }
 #ifdef DEBUG
         printf("Interest name %s, random is %d forward_path is %s \n", interest_name, interest_random_comp, forward_path);
 #endif

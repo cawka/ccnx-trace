@@ -105,10 +105,10 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 hop++;
             }
 
-            printf("\n***************************\n");
             free(reply.fwd_message[i]);
         }
 
+        printf("\n***************************\n");
         //free the memory we allocated
         free(reply.message_length);
         free(reply.fwd_message);

@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     int opt;
     char *URI = NULL;
     char *timeout = NULL;
-    int timeout_ms = 30000;
+    int timeout_ms = 60000;
     int res = 0;
 
     //check if user supplied uri to trace to, read the arguments and check them

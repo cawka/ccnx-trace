@@ -391,7 +391,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
     //if we are adding route
     if (action == 0)
     {
-        int add_route_length = strlen("ccndc add ") + strlen(forwarding_interest_name) + strlen(" tcp") +  strlen(fwd_ip) +1;
+        int add_route_length = strlen("ccndc add ") + strlen(forwarding_interest_name) + strlen(" udp") +  strlen(fwd_ip) +1;
         char *add_route = malloc(add_route_length);
         if (add_route == NULL)
         {
@@ -399,7 +399,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
             fclose(logfile);
             exit(1);
         }
-        sprintf(add_route, "%s%s%s%s", "ccndc add ", forwarding_interest_name, " tcp", fwd_ip);
+        sprintf(add_route, "%s%s%s%s", "ccndc add ", forwarding_interest_name, " udp", fwd_ip);
 #ifdef DEBUG
         fprintf(logfile, "adding route %s\n", add_route);
         fflush(logfile);
@@ -420,7 +420,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
     //delete a route
     else if (action == 1)
     {
-        int del_route_length = strlen("ccndc del ") + strlen(forwarding_interest_name) + strlen(" tcp") +  strlen(fwd_ip) +1;
+        int del_route_length = strlen("ccndc del ") + strlen(forwarding_interest_name) + strlen(" udp") +  strlen(fwd_ip) +1;
         char *del_route = malloc(del_route_length);
         if (del_route == NULL)
         {
@@ -429,7 +429,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
             exit(1);
         }
 
-        sprintf(del_route, "%s%s%s%s", "ccndc del ", forwarding_interest_name, " tcp", fwd_ip);
+        sprintf(del_route, "%s%s%s%s", "ccndc del ", forwarding_interest_name, " udp", fwd_ip);
 #ifdef DEBUG
         fprintf(logfile,"deleting route %s\n", del_route);
         fflush(logfile);

@@ -167,7 +167,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
     //parse the ccndstatus for match
     while (len_search_str > 0)
     {
-        sprintf(command_find_faces, "%s%s%s", "ccndstatus|grep -w '", search_str, "'|awk -F 'face:' '{print $2}' |awk '{print $1}'|sort|uniq");
+        sprintf(command_find_faces, "%s%s%s", "ccndstatus|grep '", search_str, " '|awk -F 'face:' '{print $2}' |awk '{print $1}'|sort|uniq");
 
 #ifdef DEBUG
         fprintf(logfile, "%s\n", command_find_faces);
@@ -209,8 +209,8 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             }
             strcpy((char *)*longest_match, search_str);
 
-            //find the fib entry that matched, mind the space at the end of search str
-            sprintf(command_fib_entry, "%s%s%s", "ccndstatus|grep -w '", search_str, " '|awk '{print $1}'|head -n 1");
+            //find the fib entry that matched, mind the space at the end of search str, don't do -w
+            sprintf(command_fib_entry, "%s%s%s", "ccndstatus|grep '", search_str, " '|awk '{print $1}'|head -n 1");
 
 #ifdef DEBUG
             fprintf(logfile, "%s\n", command_fib_entry);
@@ -236,11 +236,11 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
                 //don't copy the newline
                 strncpy(*matching_fib_entry, readbuf, strlen(readbuf)-1);
             }
-            pclose(fp);
 #ifdef DEBUG
             fprintf(logfile,"longest match %s strlen %Zu, fib entry %s length %Zu\n", *longest_match,  strlen((const char *)*longest_match), *matching_fib_entry, strlen((const char *)*matching_fib_entry));
             fflush(logfile);
 #endif
+            pclose(fp);
             free(search_str);
             break;
         }
@@ -325,6 +325,7 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
             {
                 fprintf(logfile, "Can not allocate memory for storing remote IP\n");
                 fclose(logfile);
+                pclose(fp2);
                 exit(1);
             }
             memset(return_ips[return_ip_index],0,(strlen(fib_entry)+1));

@@ -180,6 +180,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
         {
             fprintf(logfile, "can not execute ccndstatus\n");
             fclose(logfile);
+            pclose(fp);
             exit(1);
         }
 
@@ -222,6 +223,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             {
                 fprintf(logfile, "can not execute ccndstatus\n");
                 fclose(logfile);
+                pclose(fp);
                 exit(1);
             }
 
@@ -308,6 +310,7 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
         {
             fprintf(logfile, "can not execute ccndstatus\n");
             fclose(logfile);
+            pclose(fp2);
             exit(1);
         }
 
@@ -414,6 +417,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
         {
             fprintf(logfile, "can not add route\n");
             fclose(logfile);
+            pclose(fp);
             exit(1);
         }
         pclose(fp);
@@ -444,6 +448,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
         {
             fprintf(logfile, "can not add route\n");
             fclose(logfile);
+            pclose(fp);
             exit(1);
         }
         pclose(fp);

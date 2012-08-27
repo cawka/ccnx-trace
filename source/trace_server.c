@@ -208,8 +208,8 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             }
             strcpy((char *)*longest_match, search_str);
 
-            //find the fib entry that matched
-            sprintf(command_fib_entry, "%s%s%s", "ccndstatus|grep -w '", search_str, "'|awk '{print $1}'|head -n 1");
+            //find the fib entry that matched, mind the space at the end of search str
+            sprintf(command_fib_entry, "%s%s%s", "ccndstatus|grep -w '", search_str, " '|awk '{print $1}'|head -n 1");
 
 #ifdef DEBUG
             fprintf(logfile, "%s\n", command_fib_entry);

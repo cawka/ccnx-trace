@@ -193,7 +193,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
             strncpy(faces[face_index], readbuf, strlen(readbuf));
             face_index++;
         }
-        fclose(fp);
+        pclose(fp);
 
         //if faces are found, we are done, no need to match shorter prefixes, search_str is the prefix
         // find the fib entry and set it
@@ -234,7 +234,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
                 //don't copy the newline
                 strncpy(*matching_fib_entry, readbuf, strlen(readbuf)-1);
             }
-            fclose(fp);
+            pclose(fp);
 #ifdef DEBUG
             fprintf(logfile,"longest match %s strlen %Zu, fib entry %s length %Zu\n", *longest_match,  strlen((const char *)*longest_match), *matching_fib_entry, strlen((const char *)*matching_fib_entry));
             fflush(logfile);
@@ -331,6 +331,7 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
             fprintf(logfile, "storing ip address %s\n", fib_entry);
 #endif
         }
+        pclose(fp2);
     }
 
     //set the number of ips found
@@ -388,6 +389,8 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
     /// on action. Action 0 = add, 1 = deleter
     //-----------------------------------------------------------------------//
 
+    FILE *fp;
+
     //if we are adding route
     if (action == 0)
     {
@@ -406,7 +409,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
 #endif
 
         //execute the command
-        FILE *fp = popen(add_route, "r");
+        fp = popen(add_route, "r");
         if (fp == NULL)
         {
             fprintf(logfile, "can not add route\n");
@@ -436,7 +439,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
 #endif
 
         //execute the command
-        FILE *fp = popen(del_route, "r");
+        fp = popen(del_route, "r");
         if (fp == NULL)
         {
             fprintf(logfile, "can not add route\n");

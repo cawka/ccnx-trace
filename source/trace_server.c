@@ -99,7 +99,7 @@ int find_interest_name(const unsigned char *interest_msg,  struct ccn_parsed_int
     //get the last component, copy to int, get the id, copy to path
     char *last_component = strrchr(uri_string, '/') + 1;
 #ifdef DEBUG
-    fprintf(logfile, "base uri %s last component %s fwd_path %s len %Zu \n", base_uri, last_component, fwd_path,  strlen(last_component));
+    fprintf(logfile, "base uri %s last component %s fwd_path %s len %zu \n", base_uri, last_component, fwd_path,  strlen(last_component));
     fflush(logfile);
 #endif
 
@@ -237,7 +237,7 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
                 strncpy(*matching_fib_entry, readbuf, strlen(readbuf)-1);
             }
 #ifdef DEBUG
-            fprintf(logfile,"longest match %s strlen %Zu, fib entry %s length %Zu\n", *longest_match,  strlen((const char *)*longest_match), *matching_fib_entry, strlen((const char *)*matching_fib_entry));
+            fprintf(logfile,"longest match %s strlen %zu, fib entry %s length %zu\n", *longest_match,  strlen((const char *)*longest_match), *matching_fib_entry, strlen((const char *)*matching_fib_entry));
             fflush(logfile);
 #endif
             pclose(fp);
@@ -255,13 +255,13 @@ int get_faces(const unsigned char *interest_name, char **faces, int *num_faces, 
         if (last_component != NULL)
         {
 #ifdef DEBUG
-            fprintf(logfile, "last component %s len %Zu\n", last_component, strlen(last_component));
+            fprintf(logfile, "last component %s len %zu\n", last_component, strlen(last_component));
             fflush(logfile);
 #endif
             *last_component = '\0';
         }
 #ifdef DEBUG
-        fprintf(logfile, "string after removal: %s length: %Zu default route flag %d\n", search_str, strlen(search_str), default_rt_flag);
+        fprintf(logfile, "string after removal: %s length: %zu default route flag %d\n", search_str, strlen(search_str), default_rt_flag);
         fflush(logfile);
 #endif
         if (strcmp(search_str, "ccnx:") == 0 && default_rt_flag == 0)
@@ -845,10 +845,10 @@ printf("No route found\n");
         {
             //get the number of remote ips
             res = find_remote_ip(faces, number_faces, remote_ips, &num_remote_ips);
-            printf("Number of remote IP %d\ninterest_name %s length: %Zu\nlongest_prefix %s length %Zu\nmatching fib_entry %s length %Zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
+            printf("Number of remote IP %d\ninterest_name %s length: %zu\nlongest_prefix %s length %zu\nmatching fib_entry %s length %zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
 
 #ifdef DEBUG
-            fprintf(logfile, "Number of remote IP %d\ninterest_name %s length: %Zu\nlongest_prefix %s length %Zu\nmatching fib_entry %s length %Zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
+            fprintf(logfile, "Number of remote IP %d\ninterest_name %s length: %zu\nlongest_prefix %s length %zu\nmatching fib_entry %s length %zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
             fflush(logfile);
 
 #endif

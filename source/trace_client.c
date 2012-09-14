@@ -15,7 +15,7 @@
 #include <ifaddrs.h>
 
 #include "node_id.h"
-#include "version.h"
+#include "config.h"
 
 //#define DEBUG
 #define TRACE_PREFIX "/trace"

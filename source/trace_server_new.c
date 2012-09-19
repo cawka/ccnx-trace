@@ -529,7 +529,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                             sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":LOCAL");
                         }
                     }
-       /*                 //else, no such content
+                        //else, no such content
                         else
                         {
                             return_data.num_message = 1;
@@ -569,8 +569,46 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                         //for each remote ip, swap random number, forward interest
                         for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
                         {
+                             //spawn a thread
+                            printf("interest: %s, rand: %d\n", interest_name, interest_random_comp);
+
+                             thread_data_array[remote_ip_index].p_thread_id = remote_ip_index;
+
+                             thread_data_array[remote_ip_index].p_interest_name = calloc(strlen((const char *)interest_name) +1, sizeof(char));
+                             strncpy(thread_data_array[remote_ip_index].p_interest_name, interest_name, strlen((const char *)interest_name));
+
+                             thread_data_array[remote_ip_index].p_interest_random_comp = interest_random_comp;
+
+                             thread_data_array[remote_ip_index].p_forward_path = calloc(strlen((const char *)forward_path) +1, sizeof(char));
+                             strncpy(thread_data_array[remote_ip_index].p_forward_path, forward_path,  strlen((const char *)forward_path));
+
+                             thread_data_array[remote_ip_index].p_num_remote_ips = num_remote_ips;
+                             thread_data_array[remote_ip_index].p_remote_ip = remote_ips[remote_ip_index];
+
+
+                            printf("id %d, p_interest: %s, p_rand: %d\n", remote_ip_index, thread_data_array[remote_ip_index].p_interest_name, thread_data_array[remote_ip_index].p_interest_random_comp);
+
+                            res = pthread_create(&forwarding_threads[remote_ip_index], NULL, (void *)&do_forwarding, (void *)&thread_data_array[remote_ip_index]);
+                                if (res)
+                                {
+                                    printf("ERROR; return code from pthread_create() is %d\n", res);
+                                    exit(-1);
+                                }
+                            
+                        }
+
+
+                        fwd_list_index = 0;
+//                        fwd_reply
+                //wait on join
+                //                pthread_exit(0);
+                //                                }
+                //
+
+
+
                             //swap the random string
-                            swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
+                       /*     swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
                             sprintf(new_interest_rand_str, "%d", new_interest_random_comp);
                             printf("new interest name %s\n", new_interest_name);
 
@@ -587,6 +625,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                             sprintf(remote_ip_with_slash, "%s%s%s", slash, remote_ips[remote_ip_index], slash);
                             if (strstr(new_interest_name, remote_ip_with_slash) == NULL)
                             {
+
+
                                 //add the route
                                 manage_route(new_interest_name, remote_ips[remote_ip_index], 0);
 
@@ -617,7 +657,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                         for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
                         {
                             free(remote_ips[remote_ip_index]);
-                        }
+                        }*/
 
 
         #ifdef DEBUG
@@ -738,7 +778,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 for (i=0; i < number_faces; i++)
                 {
                     free(faces[i]);
-                }*/
+                } 
         return CCN_UPCALL_FINAL;
         break;
     }

@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <ifaddrs.h>
+#include <pthread.h>
 
 #include "node_id.h"
 #include "config.h"
@@ -47,6 +48,23 @@ struct data {
     uint32_t *message_length;
     char **fwd_message;
 };
+
+
+struct thread_data
+{
+    int  p_thread_id;
+    int  p_interest_random_comp;
+    char *p_interest_name;
+    char *p_forward_path;
+};
+
+struct thread_reply
+{
+    int num_reply;
+    char **reply;
+};
+
+
 
 int find_interest_name(const unsigned char *interest_msg,
                        struct ccn_parsed_interest *pi, const unsigned char **interest_name,
@@ -368,6 +386,45 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
 }
 
 
+
+void *do_forwarding(void *arguments)
+{ 
+  //long tid;
+   //tid = (long)threadid;
+   //printf("Hello World! It's me, thread #%ld!\n", tid);
+   //swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
+   //sprintf(new_interest_random_comp_str, "%d", new_interest_random_comp);
+   //printf("new interest name %s\n", new_interest_name);
+//    char *reply;
+  struct thread_data *args;
+   struct thread_reply *p_thread_reply;
+
+   p_thread_reply = malloc(sizeof(struct thread_reply));
+
+   args = (struct thread_data *) arguments;
+
+// struct thread_data *args = arguments;
+    printf("Inter name %s\n", args -> p_interest_name);
+    printf("thread id %d\n", args -> p_thread_id);
+    printf("random %d\n", args -> p_interest_random_comp);
+//    pthread_exit(0);
+//    reply = (char *)malloc(5*sizeof(char *));
+//    strcpy(reply, "test");
+//    pthread_exit((void *)reply);
+    p_thread_reply->num_reply = 2;
+    p_thread_reply->reply = malloc(2*sizeof(char *));
+    p_thread_reply->reply[0] = malloc(6);
+    strcpy(p_thread_reply->reply[0], "hello");
+    p_thread_reply->reply[1] = malloc(6);
+        strcpy(p_thread_reply->reply[1], "args");
+
+    pthread_exit(p_thread_reply);
+
+//return(0);
+
+}
+
+
 enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                                       enum ccn_upcall_kind kind, struct ccn_upcall_info *info) {
 
@@ -396,6 +453,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
       char *remote_ips[100];
       int num_remote_ips = 0;
       char *matching_fib_entry = NULL;
+      int remote_ip_index = 0;
 
     //data structures for forwarding interests
     /*  struct ccn_charbuf *name_fwd = ccn_charbuf_create();
@@ -406,7 +464,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
       int num_reply=0;
       int new_interest_random_comp = 0;
       char *new_interest_name = NULL;
-      int remote_ip_index = 0;
 
 
       return_data.num_message = 0;
@@ -434,6 +491,9 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         break;
 
     case CCN_UPCALL_INTEREST: {
+
+
+
         //get the interest name and random component from incoming packet
         res = find_interest_name(info->interest_ccnb, info->pi, &interest_name,
                                  &interest_rand_str, &forward_path);
@@ -528,7 +588,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                             return_data.fwd_message[0] = malloc(strlen(node_id)+1 + strlen(":LOCAL"));
                             sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":LOCAL");
                         }
-                    }
+                    
                         //else, no such content
                         else
                         {
@@ -555,10 +615,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                         }
                         free(matching_fib_entry);
                     }
-
                     //we found some remote ips for this face
                     else
                     {
+                        struct thread_reply *p_thread_reply;
+                        pthread_t forwarding_threads[num_remote_ips]; //threads
+                        struct thread_data thread_data_array[num_remote_ips]; //args for each thread
+
+
                         printf("adding route and forwarding, expecting %d replies\n", num_remote_ips);
         #ifdef DEBUG
                         fprintf(logfile, "adding route and forwarding, expecting %d replies\n", num_remote_ips);
@@ -570,20 +634,20 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                         for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
                         {
                              //spawn a thread
-                            printf("interest: %s, rand: %d\n", interest_name, interest_random_comp);
+                            printf("interest: %s, rand: %d\n", interest_name, interest_random_comp_int);
 
                              thread_data_array[remote_ip_index].p_thread_id = remote_ip_index;
 
                              thread_data_array[remote_ip_index].p_interest_name = calloc(strlen((const char *)interest_name) +1, sizeof(char));
                              strncpy(thread_data_array[remote_ip_index].p_interest_name, interest_name, strlen((const char *)interest_name));
 
-                             thread_data_array[remote_ip_index].p_interest_random_comp = interest_random_comp;
+                             thread_data_array[remote_ip_index].p_interest_random_comp = interest_random_comp_int;
 
                              thread_data_array[remote_ip_index].p_forward_path = calloc(strlen((const char *)forward_path) +1, sizeof(char));
                              strncpy(thread_data_array[remote_ip_index].p_forward_path, forward_path,  strlen((const char *)forward_path));
 
-                             thread_data_array[remote_ip_index].p_num_remote_ips = num_remote_ips;
-                             thread_data_array[remote_ip_index].p_remote_ip = remote_ips[remote_ip_index];
+ //                            thread_data_array[remote_ip_index].p_num_remote_ips = num_remote_ips;
+//                             thread_data_array[remote_ip_index].p_remote_ip = remote_ips[remote_ip_index];
 
 
                             printf("id %d, p_interest: %s, p_rand: %d\n", remote_ip_index, thread_data_array[remote_ip_index].p_interest_name, thread_data_array[remote_ip_index].p_interest_random_comp);
@@ -595,10 +659,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                                     exit(-1);
                                 }
                             
-                        }
-
-
-                        fwd_list_index = 0;
+                    pthread_join(forwarding_threads[remote_ip_index],(void **)&p_thread_reply);
+                    printf("%s%s\n", p_thread_reply->reply[0],p_thread_reply->reply[1]);
+}                        
+}
+//                        fwd_list_index = 0;
 //                        fwd_reply
                 //wait on join
                 //                pthread_exit(0);
@@ -659,7 +724,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                             free(remote_ips[remote_ip_index]);
                         }*/
 
-
+/*
         #ifdef DEBUG
                         printf("\n\n");
                         for (i = 0; i < fwd_list_index; i++)
@@ -779,6 +844,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 {
                     free(faces[i]);
                 } 
+*/
         return CCN_UPCALL_FINAL;
         break;
     }

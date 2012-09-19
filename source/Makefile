@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -g -Wall -Wpointer-arith -Wreturn-type -Wstrict-prototypes
-LIBS = -lcrypto
+LIBS = -lcrypto -lccn -lpthread
 
 PROGRAM_CL = trace
 PROGRAM_SR = ccn_traced

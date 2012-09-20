@@ -55,9 +55,11 @@ struct thread_data {
     char *p_interest_random_str;
     char *p_interest_name;
     char *p_forward_path;
+    char *p_remote_ip;
 };
 
 struct thread_reply {
+    int status_code;
     int num_reply;
     char **reply;
 };
@@ -423,611 +425,6 @@ char* swap_random(const unsigned char *interest_name, int interest_random_comp, 
     return(0);
 }
 
-
-void *do_forwarding(void *arguments) {
-    //long tid;
-    //tid = (long)threadid;
-    //printf("Hello World! It's me, thread #%ld!\n", tid);
-    //swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
-    //sprintf(new_interest_random_comp_str, "%d", new_interest_random_comp);
-    //printf("new interest name %s\n", new_interest_name);
-//    char *reply;
-    struct thread_data *args;
-    struct thread_reply *p_thread_reply;
-    char *new_interest_random_comp={0};
-    char *new_interest_name = {0};
-
-    p_thread_reply = malloc(sizeof(struct thread_reply));
-
-    args = (struct thread_data *) arguments;
-
-// struct thread_data *args = arguments;
-    printf("Inter name %s\n", args -> p_interest_name);
-    printf("thread id %d\n", args -> p_thread_id);
-    printf("random %s\n", args -> p_interest_random_str);
-    printf("fwd_path %s\n", args -> p_forward_path);
-//    pthread_exit(0);
-//    reply = (char *)malloc(5*sizeof(char *));
-//    strcpy(reply, "test");
-//    pthread_exit((void *)reply);
-    p_thread_reply->num_reply = 2;
-    p_thread_reply->reply = malloc(2*sizeof(char *));
-    p_thread_reply->reply[0] = malloc(6);
-    strcpy(p_thread_reply->reply[0], "hello");
-    p_thread_reply->reply[1] = malloc(6);
-    strcpy(p_thread_reply->reply[1], "args");
-
-
-    //swap random
-    swap_random(args-> p_interest_name, args->p_interest_random_str, args->p_forward_path, &new_interest_name, &new_interest_random_comp);
-    printf("New interest %s %s\n", new_interest_name, new_interest_random_comp);
-
-
-    //do a duplicate check to enroll the new interests
-
-//    sprintf(new_interest_random_comp_str, "%d", new_interest_random_comp);
-//    printf("new interest name %s\n", new_interest_name);
-
-
-    //add route
-
-    //forward interest
-
-    //pack reply structure
-
-    //delete route
-
-    pthread_exit(p_thread_reply);
-
-    //return(0);
-//    exit(0);
-
-}
-
-
-enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
-                                      enum ccn_upcall_kind kind, struct ccn_upcall_info *info) {
-
-    //-----------------------------------------------------------------------//
-    /// callback function, all interest matching ccnx:/trace will come here,
-    /// handle them as appropriate
-    //-----------------------------------------------------------------------//
-
-    //status number
-    int res = 0;
-
-    // variables for interest name
-    const unsigned char *interest_name = NULL;
-    int interest_random_comp_int = 0;
-    char *interest_rand_str = NULL;
-    const char *forward_path = NULL;
-
-    //variables for finding faces
-    char *faces[100]; //char* of faces
-    int number_faces = 0;
-    const unsigned char *longest_prefix = NULL;
-    int i=0;
-    struct data return_data;
-
-    //variables for finding remote ips
-    char *remote_ips[100];
-    int num_remote_ips = 0;
-    char *matching_fib_entry = NULL;
-    int remote_ip_index = 0;
-
-    //data structures for forwarding interests
-    /*  struct ccn_charbuf *name_fwd = ccn_charbuf_create();
-      char *fwd_reply[100];
-      struct ccn_charbuf *data_packet = ccn_charbuf_create();
-      int fwd_list_index = 0;
-      int fwd_message_length = 0;
-      int num_reply=0;
-      int new_interest_random_comp = 0;
-      char *new_interest_name = NULL;
-
-
-      return_data.num_message = 0;
-
-      char new_interest_rand_str[128] = {0};
-
-      unsigned char *buffer = NULL;
-      unsigned char *reset_buffer = NULL;
-      int iter = 0;
-      size_t buffer_len = 0;
-
-      char interest_rand_string[128] = {0};
-
-      int processed[10000]; //duplicate removal
-      int dup_flag  = 0;
-    */
-    //switch on type of event
-    switch (kind) {
-
-    case CCN_UPCALL_FINAL:
-        return CCN_UPCALL_RESULT_OK;
-        break;
-
-    case CCN_UPCALL_CONTENT:
-        break;
-
-    case CCN_UPCALL_INTEREST: {
-
-
-
-        //get the interest name and random component from incoming packet
-        res = find_interest_name(info->interest_ccnb, info->pi, &interest_name,
-                                 &interest_rand_str, &forward_path);
-        if (res !=0) {
-            fprintf(logfile, "Could not parse interest name\n");
-            fclose(logfile);
-            break;
-        }
-        fprintf(logfile, "Interest name %s, random is %s forward_path is %s \n", interest_name, interest_rand_str, forward_path);
-        fflush(logfile);
-#ifdef DEBUG
-        printf("Interest name %s, random is %s forward_path is %s \n", interest_name, interest_rand_str, forward_path);
-#endif
-
-        //check for duplicate random number and looping interest
-        //drop if duplicate
-        res = check_duplicate_interests(interest_name, interest_rand_str, forward_path);
-        if (res == 1) {
-            fprintf(logfile, "Dropping duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
-            break;
-        }
-
-        //get the matching faces for this interest
-        res = get_faces(interest_name, faces, &number_faces, &longest_prefix, &matching_fib_entry);
-
-#ifdef DEBUG
-        for (i=0; i <number_faces; i++) {
-            fprintf(logfile, "face %s is %s\n", faces[i], longest_prefix);
-            printf("face %s is %s\n", faces[i], longest_prefix);
-            fflush(logfile);
-        }
-#endif
-
-        //there is no such face, there is no route
-        if (number_faces == 0) {
-            return_data.num_message = 1;
-            return_data.message_length =  malloc(sizeof(uint32_t) * 1);
-            if (return_data.message_length == NULL) {
-                fprintf(logfile, "Can not allocate memory for reply message, field 1\n");
-                fclose(logfile);
-                exit(1);
-            }
-            printf("No route found\n");
-            //replay appropriately
-            return_data.message_length[0] = strlen(node_id)+1 + strlen(":NO ROUTE FOUND") ;
-            return_data.fwd_message = malloc(sizeof(char *) * 1);
-            return_data.fwd_message[0] = malloc(strlen(node_id)+1 + strlen(":NO ROUTE FOUND"));
-            if (return_data.fwd_message == NULL|| return_data.fwd_message[0] == NULL) {
-                fprintf(logfile, "Can not allocate memory for reply message, data\n");
-                fclose(logfile);
-                exit(1);
-            }
-            sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":NO ROUTE FOUND");
-        }
-
-        //we have some faces, find if they are remote or local
-        else {
-            //get the number of remote ips
-            res = find_remote_ip(faces, number_faces, remote_ips, &num_remote_ips);
-            printf("Number of remote IP %d\ninterest_name %s length: %zu\nlongest_prefix %s length %zu\nmatching fib_entry %s length %zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
-
-#ifdef DEBUG
-            fprintf(logfile, "Number of remote IP %d\ninterest_name %s length: %zu\nlongest_prefix %s length %zu\nmatching fib_entry %s length %zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
-            fflush(logfile);
-
-#endif
-        }
-
-
-        //if no remote ip found, this is local
-        if (num_remote_ips == 0) {
-            //does the name matches with longest prefix(without ccnx:)? otherwise, no such content
-            if (strcmp((const char *)interest_name, (const char *)matching_fib_entry+5) == 0) {
-                printf("This is local\n");
-
-#ifdef DEBUG
-                fprintf(logfile, "This is local\n");
-                fflush(logfile);
-#endif
-                //reply appropriately
-                return_data.num_message = 1;
-                return_data.message_length =  malloc(sizeof(uint32_t) * 1);
-                return_data.message_length[0] = strlen(node_id)+1 + strlen(":LOCAL") ;
-                return_data.fwd_message = malloc(sizeof(char *) * 1);
-                return_data.fwd_message[0] = malloc(strlen(node_id)+1 + strlen(":LOCAL"));
-                sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":LOCAL");
-            }
-
-            //else, no such content
-            else {
-                return_data.num_message = 1;
-                return_data.message_length =  malloc(sizeof(uint32_t) * 1);
-                if (return_data.message_length == NULL) {
-                    fprintf(logfile, "Can not allocate memory for reply message, field 1\n");
-                    fclose(logfile);
-                    exit(1);
-                }
-                printf("No such content \n");
-                //reply appropriately
-                return_data.message_length[0] = strlen(node_id)+1 + strlen(":NO SUCH CONTENT") ;
-                return_data.fwd_message = malloc(sizeof(char *) * 1);
-                return_data.fwd_message[0] = malloc(strlen(node_id)+1 + strlen(":NO SUCH CONTENT"));
-                if (return_data.fwd_message == NULL|| return_data.fwd_message[0] == NULL) {
-                    fprintf(logfile, "Can not allocate memory for reply message, data\n");
-                    fclose(logfile);
-                    exit(1);
-                }
-                sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":NO SUCH CONTENT");
-            }
-            free(matching_fib_entry);
-        }
-        //we found some remote ips for this face
-        else {
-            struct thread_reply *p_thread_reply;
-            pthread_t forwarding_threads[num_remote_ips]; //threads
-            struct thread_data thread_data_array[num_remote_ips]; //args for each thread
-
-
-            printf("adding route and forwarding, expecting %d replies\n", num_remote_ips);
-#ifdef DEBUG
-            fprintf(logfile, "adding route and forwarding, expecting %d replies\n", num_remote_ips);
-            fflush(logfile);
-#endif
-            num_reply = num_remote_ips;
-
-            //for each remote ip, swap random number, forward interest
-            for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++) {
-                //spawn a thread
-                printf("interest: %s, rand: %s\n", interest_name, interest_rand_str);
-
-                thread_data_array[remote_ip_index].p_thread_id = remote_ip_index;
-
-                thread_data_array[remote_ip_index].p_interest_name = calloc(strlen((const char *)interest_name) +1, sizeof(char));
-                strncpy(thread_data_array[remote_ip_index].p_interest_name, interest_name, strlen((const char *)interest_name));
-
-                thread_data_array[remote_ip_index].p_interest_random_str = calloc(strlen((const char *)interest_rand_str) +1, sizeof(char));
-                strncpy(thread_data_array[remote_ip_index].p_interest_random_str, interest_rand_str, strlen((const char *)interest_rand_str));
-                //thread_data_array[remote_ip_index].p_interest_random_comp = interest_random_comp_int;
-
-                thread_data_array[remote_ip_index].p_forward_path = calloc(strlen((const char *)forward_path) +1, sizeof(char));
-                strncpy(thread_data_array[remote_ip_index].p_forward_path, forward_path,  strlen((const char *)forward_path));
-
-//                            thread_data_array[remote_ip_index].p_num_remote_ips = num_remote_ips;
-//                             thread_data_array[remote_ip_index].p_remote_ip = remote_ips[remote_ip_index];
-
-
-//                printf("id %d, p_interest: %s, p_rand: %s\n", remote_ip_index, thread_data_array[remote_ip_index].p_interest_name, thread_data_array[remote_ip_index].p_interest_random_str);
-
-                res = pthread_create(&forwarding_threads[remote_ip_index], NULL, (void *)&do_forwarding, (void *)&thread_data_array[remote_ip_index]);
-                if (res) {
-                    printf("ERROR; return code from pthread_create() is %d\n", res);
-                    exit(-1);
-                }
-
-                pthread_join(forwarding_threads[remote_ip_index],(void **)&p_thread_reply);
-                printf("reply %s%s\n", p_thread_reply->reply[0],p_thread_reply->reply[1]);
-            }
-        }
-//                        fwd_list_index = 0;
-//                        fwd_reply
-        //wait on join
-        //                pthread_exit(0);
-        //                                }
-        //
-
-
-
-        //swap the random string
-        /*     swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
-             sprintf(new_interest_rand_str, "%d", new_interest_random_comp);
-             printf("new interest name %s\n", new_interest_name);
-
-        #ifdef DEBUG
-             fprintf(logfile, "new interest name %s\n", new_interest_name);
-             fflush(logfile);
-        #endif
-             //add to the processed list
-             processed[processed_index] = new_interest_random_comp;
-             processed_index += 1;
-
-             //add the remote route, if remote ip not in fwd_route
-             char *remote_ip_with_slash = calloc(strlen(remote_ips[remote_ip_index]) + 2 + 1, sizeof(char));
-             sprintf(remote_ip_with_slash, "%s%s%s", slash, remote_ips[remote_ip_index], slash);
-             if (strstr(new_interest_name, remote_ip_with_slash) == NULL)
-             {
-
-
-                 //add the route
-                 manage_route(new_interest_name, remote_ips[remote_ip_index], 0);
-
-                 //create fwd interest
-                 res = ccn_name_from_uri(name_fwd, new_interest_name);
-                 if (res < 0)
-                 {
-                     fprintf(logfile, "can not convert new interest name %s\n", new_interest_name);
-                     fclose(logfile);
-                     exit(1);
-                 }
-
-                 //express interest
-                 get_fwd_reply(name_fwd, new_interest_name, &*fwd_reply, &num_reply, fwd_list_index, remote_ips[remote_ip_index]);
-                 fwd_list_index += num_reply;
-
-                 //delete the route
-                 manage_route(new_interest_name, remote_ips[remote_ip_index], 1);
-             }
-             //we are done with the new interest name, go back for the next remote ip
-             free(new_interest_name);
-             free(remote_ip_with_slash);
-
-         }
-         free((void *)forward_path);
-
-         //free remote ip list, we don't need it
-         for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
-         {
-             free(remote_ips[remote_ip_index]);
-         }*/
-
-        /*
-                #ifdef DEBUG
-                                printf("\n\n");
-                                for (i = 0; i < fwd_list_index; i++)
-                                {
-                                    fprintf(logfile, "Reply is %s \n", fwd_reply[i]);
-                                }
-                                printf("\n\n");
-
-                                fflush(logfile);
-                #endif
-
-                                //process and store the replies in a data packet
-                                return_data.num_message = fwd_list_index;
-                //                return_data.message_length =  malloc(return_data.num_message);
-                                return_data.message_length =  (uint32_t*) calloc (return_data.num_message,sizeof(uint32_t));
-
-                                if (return_data.message_length == NULL)
-                                {
-
-                                    fprintf(logfile, "Can not allocate memory for reply message leangth\n");
-                                    fclose(logfile);
-                                    exit(1);
-                                }
-
-                                //store the messages
-                                return_data.fwd_message = malloc(sizeof(char *) * return_data.num_message);
-                                for (i = 0; i < fwd_list_index; i++)
-                                {
-                                    return_data.message_length[i] = strlen(node_id) + strlen("~")+ strlen(fwd_reply[i]) + 1;
-                                    return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen("~")+ strlen(fwd_reply[i]) + 1);
-                                    if (return_data.fwd_message[i] == NULL)
-                                    {
-                                        fprintf(logfile, "Can not allocate memory for reply message number %d\n", i);
-                                        fclose(logfile);
-
-                                        exit(1);
-                                    }
-                                    sprintf(return_data.fwd_message[i], "%s%s%s",  node_id, "~", fwd_reply[i]);
-                #ifdef DEBUG
-                                    fprintf(logfile, "%s\n", return_data.fwd_message[i]);
-                                    fflush(logfile);
-                #endif
-                                }
-                            }
-                        }
-
-                        //now we have the messages, pack them and send them back
-                #ifdef DEBUG
-                        fprintf(logfile, "return_data.num_message = %d\n", return_data.num_message);
-                        fflush(logfile);
-                #endif
-
-                        for (iter = 0; iter<return_data.num_message; iter++)
-                        {
-                #ifdef DEBUG
-                            fprintf(logfile, "message length = %d\n", return_data.message_length[iter]);
-                            fprintf(logfile, "message = %s\n", return_data.fwd_message[iter]);
-
-                            fflush(logfile);
-                #endif
-                            fwd_message_length += return_data.message_length[iter];
-                        }
-
-
-                        //pack the buffer for sending
-                        buffer = malloc(sizeof(uint32_t)* (1+ return_data.num_message) + fwd_message_length);
-                        if (buffer == NULL)
-                        {
-                            fprintf(logfile, "Can not allocate memory for return buffer %d\n", i);
-                            fclose(logfile);
-
-                            exit(1);
-                        }
-
-                        //we have to reset the pointer before sending
-                        reset_buffer = buffer;
-
-                        //copy num_fwd_interest
-                        memcpy(buffer, &return_data.num_message, sizeof(uint32_t));
-
-                        buffer += sizeof(uint32_t);
-                        buffer_len += 1*sizeof(uint32_t);
-
-                        //copy the lengths
-                        for (iter = 0; iter<return_data.num_message; iter++)
-                        {
-                            memcpy(buffer, &return_data.message_length[iter], sizeof(uint32_t));
-                            buffer += sizeof(uint32_t);
-                            buffer_len += sizeof(uint32_t);
-                        }
-
-                        //copy the strings
-                        for (iter = 0; iter<return_data.num_message; iter++)
-                        {
-                            memcpy(buffer, return_data.fwd_message[iter], return_data.message_length[iter]);
-                            buffer += return_data.message_length[iter];
-                            buffer_len += return_data.message_length[iter];
-                            free(return_data.fwd_message[iter]);
-                        }
-
-                        //reset pointer
-                        buffer = reset_buffer;
-
-                        //send data packet
-                        construct_trace_response(info->h, data_packet, info->interest_ccnb, info->pi, buffer, buffer_len);
-                        res = ccn_put(info->h, data_packet->buf, data_packet->length);
-                        printf("\n");
-
-                        //free all the allocate memory
-                        ccn_charbuf_destroy(&data_packet);
-                        ccn_charbuf_destroy(&name_fwd);
-                        free((void*)interest_name);
-                        free((void *)longest_prefix);
-                        free(return_data.fwd_message);
-                        free(buffer);
-                        for (i=0; i < number_faces; i++)
-                        {
-                            free(faces[i]);
-                        }
-        */
-        return CCN_UPCALL_FINAL;
-        break;
-    }
-    case CCN_UPCALL_INTEREST_TIMED_OUT:
-        fprintf(logfile, "request timed out - retrying\n");
-
-        fflush(logfile);
-        return CCN_UPCALL_RESULT_REEXPRESS;
-
-    case CCN_UPCALL_CONTENT_UNVERIFIED:
-        fprintf(logfile, "Could not verify content");
-        fflush(logfile);
-        return CCN_UPCALL_RESULT_ERR;
-
-    case CCN_UPCALL_CONTENT_BAD:
-        fprintf(logfile, "Bad content\n");
-        fflush(logfile);
-        return CCN_UPCALL_RESULT_ERR;
-
-    default:
-        fprintf(logfile, "Unexpected response\n");
-        fflush(logfile);
-        return CCN_UPCALL_RESULT_ERR;
-    }
-    return CCN_UPCALL_FINAL;
-}
-
-void usage(void) {
-    ///prints the usage and exits
-    printf("%s version %s \n", SRV_PROGRAM, SRV_VERSION);
-    printf("%s \n\n", SRV_PROGRAM);
-
-    printf("  -h             print this help and exit\n");
-    printf("  -V             print version and exit\n\n");
-    exit(0);
-}
-
-
-int main(int argc, char **argv) {
-
-    //no argument necessary
-    if (argc != 1) {
-        usage();
-        exit(1);
-    }
-
-
-    //check ccn_path
-    if (CCN_DIR[strlen(CCN_DIR) - 1] != '/') {
-        printf("Please provide CCNx path with a trailing slash\n");
-        exit(1);
-    }
-
-    //check if logfile is present, if yes, open in append mode
-    //write mode otherwise
-
-    logfile = fopen(LOGFILE, "r");
-    if (logfile != NULL) {
-        fclose(logfile);
-        log_exist = 1;
-    }
-
-    if (log_exist == 1) {
-        logfile = fopen(LOGFILE, "a");
-    } else {
-        logfile = fopen(LOGFILE, "w");
-    }
-
-
-    //seed the random
-    srand ((unsigned int)time (NULL)*getpid());
-
-    //get the node_id, IP address for now
-    if (get_ip_addresses(node_id) == NULL) {
-        printf("Can not get node_id\n");
-        fprintf(logfile, "Can not get node_id\n");
-        fclose(logfile);
-        exit(1);
-    }
-    //print node id
-    printf("Node ID:%s\n", node_id);
-
-    //create ccn handle
-    struct ccn *ccn = NULL;
-
-    //connect to ccnd
-    ccn = ccn_create();
-    if (ccn_connect(ccn, NULL) == -1) {
-        fprintf(logfile, "Could not connect to ccnd");
-        fclose(logfile);
-        exit(1);
-    }
-
-    //create prefix we are interested in, register in FIB
-    int res;
-    struct ccn_charbuf *prefix = ccn_charbuf_create();
-
-    //We are interested in anythin starting with /trace
-    res = ccn_name_from_uri(prefix, "/trace");
-    if (res < 0) {
-        fprintf(logfile, "Can not convert name to URI\n");
-        fclose(logfile);
-        exit(1);
-    }
-
-    //handle for upcalls, receive notifications of incoming interests and content.
-    //specify where the reply will go
-    struct ccn_closure in_interest = {.p = &incoming_interest};
-    in_interest.data = &prefix;
-
-    //set the interest filter for prefix we created
-    res = ccn_set_interest_filter(ccn, prefix, &in_interest);
-    if (res < 0) {
-        fprintf(logfile, "Failed to register interest (res == %d)\n", res);
-        fclose(logfile);
-        exit(1);
-    }
-
-    //listen infinitely
-    res = ccn_run(ccn, -1);
-
-    //cleanup
-    ccn_destroy(&ccn);
-    ccn_charbuf_destroy(&prefix);
-    exit(0);
-}
-
-/*
-
-
-
-
-
-
 const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, int action) {
 
     //-----------------------------------------------------------------------//
@@ -1096,6 +493,9 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
 
 
 
+
+
+
 int construct_trace_response(struct ccn *h, struct ccn_charbuf *data,
                              const unsigned char *interest_msg, const struct ccn_parsed_interest *pi, unsigned char *mymsg, size_t size) {
 
@@ -1130,7 +530,7 @@ int construct_trace_response(struct ccn *h, struct ccn_charbuf *data,
 }
 
 
-void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char **fwd_reply, int *num_reply, int fwd_list_index, char *remote_ip) {
+void *get_fwd_reply(char *new_interest_name, char **fwd_reply, int *num_reply, int fwd_list_index, char *remote_ip) {
     //-----------------------------------------------------------------------//
     /// forwards the interests and wait for reply. Timeout is hardcoded 8 secs.
     /// input is interest name to forward, sets the reply array (of strings)
@@ -1141,6 +541,7 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
     int res;
     const unsigned char *ptr;
     int i;
+    struct ccn_charbuf *name_fwd = ccn_charbuf_create();
 
     struct data mymsg;
     mymsg.num_message = 0;
@@ -1300,9 +701,673 @@ void *get_fwd_reply(struct ccn_charbuf *name_fwd, char *new_interest_name, char 
 
     }
     //we are done here
+    sleep(.1);
     ccn_destroy(&ccn_fwd);
     ccn_charbuf_destroy(&resultbuf);
     ccn_charbuf_destroy(&ccnb_fwd);
     return(0);
 }
-*/
+
+void *do_forwarding(void *arguments) {
+    //long tid;
+    //tid = (long)threadid;
+    //printf("Hello World! It's me, thread #%ld!\n", tid);
+    //swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
+    //sprintf(new_interest_random_comp_str, "%d", new_interest_random_comp);
+    //printf("new interest name %s\n", new_interest_name);
+//    char *reply;
+    struct thread_data *args;
+    struct thread_reply *p_thread_reply;
+    char *new_interest_random_comp={0};
+    char *new_interest_name = {0};
+    int res;
+    int i;
+
+    char *fwd_reply[100];
+    int num_reply=0;
+    int fwd_list_index = 0;
+
+    p_thread_reply = malloc(sizeof(struct thread_reply));
+
+    args = (struct thread_data *) arguments;
+
+// struct thread_data *args = arguments;
+    printf("Inter name %s\n", args -> p_interest_name);
+    printf("thread id %d\n", args -> p_thread_id);
+    printf("random %s\n", args -> p_interest_random_str);
+    printf("fwd_path %s\n", args -> p_forward_path);
+    printf("remote_ip %s\n", args -> p_remote_ip);
+//    pthread_exit(0);
+//    reply = (char *)malloc(5*sizeof(char *));
+//    strcpy(reply, "test");
+//    pthread_exit((void *)reply);
+
+
+    //swap random
+    swap_random(args-> p_interest_name, args->p_interest_random_str, args->p_forward_path, &new_interest_name, &new_interest_random_comp);
+    printf("New interest %s %s\n", new_interest_name, new_interest_random_comp);
+
+
+    //do a duplicate check to enroll the new interests
+    res = check_duplicate_interests(new_interest_name, new_interest_random_comp, args->p_forward_path);
+    if (res  == 1)
+    {
+        p_thread_reply->status_code = 1;
+        pthread_exit(p_thread_reply);
+    }
+
+//    sprintf(new_interest_random_comp_str, "%d", new_interest_random_comp);
+//    printf("new interest name %s\n", new_interest_name);
+
+    //add route
+
+    manage_route(new_interest_name, args->p_remote_ip, 0);
+
+    //forward interest
+    get_fwd_reply(new_interest_name, &*fwd_reply, &num_reply, fwd_list_index, args->p_remote_ip);
+    printf("Num reply thread %d\n", num_reply);
+
+    for (i = 0; i<num_reply; i++)
+    {
+        printf("thread reply %s\n", fwd_reply[i]);
+    }
+
+    //pack reply structure
+
+    //delete route
+    manage_route(new_interest_name, args->p_remote_ip, 1);
+
+
+    //pack the reply for main
+    p_thread_reply->status_code = 0;
+    p_thread_reply->num_reply = num_reply;
+    p_thread_reply->reply = calloc(num_reply, sizeof(char *));
+    for (i = 0; i<num_reply; i++)
+    {
+        p_thread_reply->reply[i] = calloc(strlen(fwd_reply[i])+1 ,sizeof(char));
+        strncpy(p_thread_reply->reply[i], fwd_reply[i], strlen(fwd_reply[i]));
+    }
+    pthread_exit(p_thread_reply);
+
+    //return(0);
+//    exit(0);
+
+}
+
+
+enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
+                                      enum ccn_upcall_kind kind, struct ccn_upcall_info *info) {
+
+    //-----------------------------------------------------------------------//
+    /// callback function, all interest matching ccnx:/trace will come here,
+    /// handle them as appropriate
+    //-----------------------------------------------------------------------//
+
+    //status number
+    int res = 0;
+
+    // variables for interest name
+    const unsigned char *interest_name = NULL;
+    int interest_random_comp_int = 0;
+    char *interest_rand_str = NULL;
+    const char *forward_path = NULL;
+
+    //variables for finding faces
+    char *faces[100]; //char* of faces
+    int number_faces = 0;
+    const unsigned char *longest_prefix = NULL;
+    int i=0;
+    struct data return_data;
+
+    //variables for finding remote ips
+    char *remote_ips[100];
+    int num_remote_ips = 0;
+    char *matching_fib_entry = NULL;
+    int remote_ip_index = 0;
+
+
+    //variables for fwd_reply
+    int remote_reply = 0;
+    char *fwd_reply[100];
+    int fwd_list_index = 0;
+
+    //data structures for forwarding interests
+    struct ccn_charbuf *name_fwd = ccn_charbuf_create();
+    struct ccn_charbuf *data_packet = ccn_charbuf_create();
+    int fwd_message_length = 0;
+    int num_reply=0;
+    int new_interest_random_comp = 0;
+    char *new_interest_name = NULL;
+
+
+    return_data.num_message = 0;
+
+    char new_interest_rand_str[128] = {0};
+
+    unsigned char *buffer = NULL;
+    unsigned char *reset_buffer = NULL;
+    int iter = 0;
+    size_t buffer_len = 0;
+
+    char interest_rand_string[128] = {0};
+    /*
+          int processed[10000]; //duplicate removal
+          int dup_flag  = 0;
+        */
+    //switch on type of event
+    switch (kind) {
+
+    case CCN_UPCALL_FINAL:
+        return CCN_UPCALL_RESULT_OK;
+        break;
+
+    case CCN_UPCALL_CONTENT:
+        break;
+
+    case CCN_UPCALL_INTEREST:
+
+    {
+
+
+
+        //get the interest name and random component from incoming packet
+        res = find_interest_name(info->interest_ccnb, info->pi, &interest_name,
+                                 &interest_rand_str, &forward_path);
+        if (res !=0) {
+            fprintf(logfile, "Could not parse interest name\n");
+            fclose(logfile);
+            break;
+        }
+        fprintf(logfile, "Interest name %s, random is %s forward_path is %s \n", interest_name, interest_rand_str, forward_path);
+        fflush(logfile);
+#ifdef DEBUG
+        printf("Interest name %s, random is %s forward_path is %s \n", interest_name, interest_rand_str, forward_path);
+#endif
+
+        //check for duplicate random number and looping interest
+        //drop if duplicate
+        res = check_duplicate_interests(interest_name, interest_rand_str, forward_path);
+        if (res == 1) {
+            fprintf(logfile, "Dropping duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
+            break;
+        }
+
+        //get the matching faces for this interest
+        res = get_faces(interest_name, faces, &number_faces, &longest_prefix, &matching_fib_entry);
+
+#ifdef DEBUG
+        for (i=0; i <number_faces; i++) {
+            fprintf(logfile, "face %s is %s\n", faces[i], longest_prefix);
+            printf("face %s is %s\n", faces[i], longest_prefix);
+            fflush(logfile);
+        }
+#endif
+
+        //there is no such face, there is no route
+        if (number_faces == 0) {
+            return_data.num_message = 1;
+            return_data.message_length =  malloc(sizeof(uint32_t) * 1);
+            if (return_data.message_length == NULL) {
+                fprintf(logfile, "Can not allocate memory for reply message, field 1\n");
+                fclose(logfile);
+                exit(1);
+            }
+            printf("No route found\n");
+            //replay appropriately
+            return_data.message_length[0] = strlen(node_id)+1 + strlen(":NO ROUTE FOUND") ;
+            return_data.fwd_message = malloc(sizeof(char *) * 1);
+            return_data.fwd_message[0] = malloc(strlen(node_id)+1 + strlen(":NO ROUTE FOUND"));
+            if (return_data.fwd_message == NULL|| return_data.fwd_message[0] == NULL) {
+                fprintf(logfile, "Can not allocate memory for reply message, data\n");
+                fclose(logfile);
+                exit(1);
+            }
+            sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":NO ROUTE FOUND");
+        }
+
+        //we have some faces, find if they are remote or local
+        else {
+            //get the number of remote ips
+            res = find_remote_ip(faces, number_faces, remote_ips, &num_remote_ips);
+            printf("Number of remote IP %d\ninterest_name %s length: %zu\nlongest_prefix %s length %zu\nmatching fib_entry %s length %zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
+
+#ifdef DEBUG
+            fprintf(logfile, "Number of remote IP %d\ninterest_name %s length: %zu\nlongest_prefix %s length %zu\nmatching fib_entry %s length %zu\n", num_remote_ips, interest_name, strlen((const char *)interest_name), longest_prefix, strlen((const char *)longest_prefix), matching_fib_entry, strlen((const char *)matching_fib_entry));
+            fflush(logfile);
+
+#endif
+
+
+            //if no remote ip found, this is local
+            if (num_remote_ips == 0) {
+                //does the name matches with longest prefix(without ccnx:)? otherwise, no such content
+                if (strcmp((const char *)interest_name, (const char *)matching_fib_entry+5) == 0) {
+                    printf("This is local\n");
+
+#ifdef DEBUG
+                    fprintf(logfile, "This is local\n");
+                    fflush(logfile);
+#endif
+                    //reply appropriately
+                    return_data.num_message = 1;
+                    return_data.message_length =  malloc(sizeof(uint32_t) * 1);
+                    return_data.message_length[0] = strlen(node_id)+1 + strlen(":LOCAL") ;
+                    return_data.fwd_message = malloc(sizeof(char *) * 1);
+                    return_data.fwd_message[0] = malloc(strlen(node_id)+1 + strlen(":LOCAL"));
+                    sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":LOCAL");
+                }
+
+                //else, no such content
+                else {
+                    return_data.num_message = 1;
+                    return_data.message_length =  malloc(sizeof(uint32_t) * 1);
+                    if (return_data.message_length == NULL) {
+                        fprintf(logfile, "Can not allocate memory for reply message, field 1\n");
+                        fclose(logfile);
+                        exit(1);
+                    }
+                    printf("No such content \n");
+                    //reply appropriately
+                    return_data.message_length[0] = strlen(node_id)+1 + strlen(":NO SUCH CONTENT") ;
+                    return_data.fwd_message = malloc(sizeof(char *) * 1);
+                    return_data.fwd_message[0] = malloc(strlen(node_id)+1 + strlen(":NO SUCH CONTENT"));
+                    if (return_data.fwd_message == NULL|| return_data.fwd_message[0] == NULL) {
+                        fprintf(logfile, "Can not allocate memory for reply message, data\n");
+                        fclose(logfile);
+                        exit(1);
+                    }
+                    sprintf(return_data.fwd_message[0], "%s%s",  node_id, ":NO SUCH CONTENT");
+                }
+                free(matching_fib_entry);
+            }
+            //we found some remote ips for this face
+            else {
+                struct thread_reply *p_thread_reply;
+                pthread_t forwarding_threads[num_remote_ips]; //threads
+                struct thread_data thread_data_array[num_remote_ips]; //args for each thread
+
+
+                printf("adding route and forwarding, expecting %d replies\n", num_remote_ips);
+#ifdef DEBUG
+                fprintf(logfile, "adding route and forwarding, expecting %d replies\n", num_remote_ips);
+                fflush(logfile);
+#endif
+                            num_reply = num_remote_ips;
+
+                //for each remote ip, swap random number, forward interest
+                for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++) {
+                    //spawn a thread
+                    printf("interest: %s, rand: %s\n", interest_name, interest_rand_str);
+
+                    thread_data_array[remote_ip_index].p_thread_id = remote_ip_index;
+
+                    thread_data_array[remote_ip_index].p_interest_name = calloc(strlen((const char *)interest_name) +1, sizeof(char));
+                    strncpy(thread_data_array[remote_ip_index].p_interest_name, interest_name, strlen((const char *)interest_name));
+
+                    thread_data_array[remote_ip_index].p_interest_random_str = calloc(strlen((const char *)interest_rand_str) +1, sizeof(char));
+                    strncpy(thread_data_array[remote_ip_index].p_interest_random_str, interest_rand_str, strlen((const char *)interest_rand_str));
+                    //thread_data_array[remote_ip_index].p_interest_random_comp = interest_random_comp_int;
+
+                    thread_data_array[remote_ip_index].p_forward_path = calloc(strlen((const char *)forward_path) +1, sizeof(char));
+                    strncpy(thread_data_array[remote_ip_index].p_forward_path, forward_path,  strlen((const char *)forward_path));
+
+                    thread_data_array[remote_ip_index].p_remote_ip = calloc(strlen((const char *)remote_ips[remote_ip_index]) +1, sizeof(char));
+                    strncpy(thread_data_array[remote_ip_index].p_remote_ip, remote_ips[remote_ip_index],  strlen((const char *)remote_ips[remote_ip_index]));
+//                            thread_data_array[remote_ip_index].p_num_remote_ips = num_remote_ips;
+//                           thread_data_array[remote_ip_index].p_remote_ip = remote_ips[remote_ip_index];
+
+
+//                printf("id %d, p_interest: %s, p_rand: %s\n", remote_ip_index, thread_data_array[remote_ip_index].p_interest_name, thread_data_array[remote_ip_index].p_interest_random_str);
+
+                    res = pthread_create(&forwarding_threads[remote_ip_index], NULL, (void *)&do_forwarding, (void *)&thread_data_array[remote_ip_index]);
+                    if (res) {
+                        printf("ERROR; return code from pthread_create() is %d\n", res);
+                        exit(-1);
+                    }
+
+                }
+
+                for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++) {
+                    pthread_join(forwarding_threads[remote_ip_index],(void **)&p_thread_reply);
+                    if ( p_thread_reply->status_code == 1)
+                    {
+                        fprintf(logfile, "Duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
+                        printf("Duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
+                        break;
+                    }
+                    printf("num reply %d \n",  p_thread_reply->num_reply);
+                    for (remote_reply=0; remote_reply < p_thread_reply->num_reply; remote_reply++)
+                    {
+                        printf("reply main %s\n", p_thread_reply->reply[remote_reply]);
+                        fwd_reply[fwd_list_index] = calloc(strlen(p_thread_reply->reply[remote_reply])+1, sizeof(char));
+                        strncpy(fwd_reply[fwd_list_index], p_thread_reply->reply[remote_reply],strlen(p_thread_reply->reply[remote_reply]));
+                        fwd_list_index++;
+                    }
+                }
+
+
+                for (i = 0; i<fwd_list_index; i++) {
+                    printf("Reply %d is %s\n", i, fwd_reply[i]);
+
+                }
+
+
+
+#ifdef DEBUG
+                printf("\n\n");
+                for (i = 0; i < fwd_list_index; i++)
+                {
+                    fprintf(logfile, "Reply is %s \n", fwd_reply[i]);
+                }
+                printf("\n\n");
+
+                fflush(logfile);
+#endif
+
+                //process and store the replies in a data packet
+                return_data.num_message = fwd_list_index;
+                //                return_data.message_length =  malloc(return_data.num_message);
+                return_data.message_length =  (uint32_t*) calloc (return_data.num_message,sizeof(uint32_t));
+
+                if (return_data.message_length == NULL)
+                {
+
+                    fprintf(logfile, "Can not allocate memory for reply message leangth\n");
+                    fclose(logfile);
+                    exit(1);
+                }
+
+                //store the messages
+                return_data.fwd_message = malloc(sizeof(char *) * return_data.num_message);
+                for (i = 0; i < fwd_list_index; i++)
+                {
+                    return_data.message_length[i] = strlen(node_id) + strlen("~")+ strlen(fwd_reply[i]) + 1;
+                    return_data.fwd_message[i] = malloc(strlen(node_id) +  strlen("~")+ strlen(fwd_reply[i]) + 1);
+                    if (return_data.fwd_message[i] == NULL)
+                    {
+                        fprintf(logfile, "Can not allocate memory for reply message number %d\n", i);
+                        fclose(logfile);
+
+                        exit(1);
+                    }
+                    sprintf(return_data.fwd_message[i], "%s%s%s",  node_id, "~", fwd_reply[i]);
+#ifdef DEBUG
+                    fprintf(logfile, "%s\n", return_data.fwd_message[i]);
+                    fflush(logfile);
+#endif
+                }
+            }
+            //}
+
+            //now we have the messages, pack them and send them back
+#ifdef DEBUG
+            fprintf(logfile, "return_data.num_message = %d\n", return_data.num_message);
+            fflush(logfile);
+#endif
+
+            for (iter = 0; iter<return_data.num_message; iter++)
+            {
+#ifdef DEBUG
+                fprintf(logfile, "message length = %d\n", return_data.message_length[iter]);
+                fprintf(logfile, "message = %s\n", return_data.fwd_message[iter]);
+
+                fflush(logfile);
+#endif
+                fwd_message_length += return_data.message_length[iter];
+            }
+
+
+            //pack the buffer for sending
+            buffer = malloc(sizeof(uint32_t)* (1+ return_data.num_message) + fwd_message_length);
+            if (buffer == NULL)
+            {
+                fprintf(logfile, "Can not allocate memory for return buffer %d\n", i);
+                fclose(logfile);
+
+                exit(1);
+            }
+
+            //we have to reset the pointer before sending
+            reset_buffer = buffer;
+
+            //copy num_fwd_interest
+            memcpy(buffer, &return_data.num_message, sizeof(uint32_t));
+
+            buffer += sizeof(uint32_t);
+            buffer_len += 1*sizeof(uint32_t);
+
+            //copy the lengths
+            for (iter = 0; iter<return_data.num_message; iter++)
+            {
+                memcpy(buffer, &return_data.message_length[iter], sizeof(uint32_t));
+                buffer += sizeof(uint32_t);
+                buffer_len += sizeof(uint32_t);
+            }
+
+            //copy the strings
+            for (iter = 0; iter<return_data.num_message; iter++)
+            {
+                memcpy(buffer, return_data.fwd_message[iter], return_data.message_length[iter]);
+                buffer += return_data.message_length[iter];
+                buffer_len += return_data.message_length[iter];
+                free(return_data.fwd_message[iter]);
+            }
+
+            //reset pointer
+            buffer = reset_buffer;
+
+            //send data packet
+            construct_trace_response(info->h, data_packet, info->interest_ccnb, info->pi, buffer, buffer_len);
+            res = ccn_put(info->h, data_packet->buf, data_packet->length);
+            printf("\n");
+
+            //free all the allocate memory
+            ccn_charbuf_destroy(&data_packet);
+            ccn_charbuf_destroy(&name_fwd);
+            free((void*)interest_name);
+            free((void *)longest_prefix);
+            free(return_data.fwd_message);
+            free(buffer);
+            for (i=0; i < number_faces; i++)
+            {
+                free(faces[i]);
+            }
+        }
+        return CCN_UPCALL_FINAL;
+        break;
+
+
+    }
+    case CCN_UPCALL_INTEREST_TIMED_OUT:
+        fprintf(logfile, "request timed out - retrying\n");
+
+        fflush(logfile);
+        return CCN_UPCALL_RESULT_REEXPRESS;
+
+    case CCN_UPCALL_CONTENT_UNVERIFIED:
+        fprintf(logfile, "Could not verify content");
+        fflush(logfile);
+        return CCN_UPCALL_RESULT_ERR;
+
+    case CCN_UPCALL_CONTENT_BAD:
+        fprintf(logfile, "Bad content\n");
+        fflush(logfile);
+        return CCN_UPCALL_RESULT_ERR;
+
+    default:
+        fprintf(logfile, "Unexpected response\n");
+        fflush(logfile);
+        return CCN_UPCALL_RESULT_ERR;
+    }
+    return CCN_UPCALL_FINAL;
+}
+
+void usage(void) {
+    ///prints the usage and exits
+    printf("%s version %s \n", SRV_PROGRAM, SRV_VERSION);
+    printf("%s \n\n", SRV_PROGRAM);
+
+    printf("  -h             print this help and exit\n");
+    printf("  -V             print version and exit\n\n");
+    exit(0);
+}
+
+
+int main(int argc, char **argv) {
+
+    //no argument necessary
+    if (argc != 1) {
+        usage();
+        exit(1);
+    }
+
+
+    //check ccn_path
+    if (CCN_DIR[strlen(CCN_DIR) - 1] != '/') {
+        printf("Please provide CCNx path with a trailing slash\n");
+        exit(1);
+    }
+
+    //check if logfile is present, if yes, open in append mode
+    //write mode otherwise
+
+    logfile = fopen(LOGFILE, "r");
+    if (logfile != NULL) {
+        fclose(logfile);
+        log_exist = 1;
+    }
+
+    if (log_exist == 1) {
+        logfile = fopen(LOGFILE, "a");
+    } else {
+        logfile = fopen(LOGFILE, "w");
+    }
+
+
+    //seed the random
+    srand ((unsigned int)time (NULL)*getpid());
+
+    //get the node_id, IP address for now
+    if (get_ip_addresses(node_id) == NULL) {
+        printf("Can not get node_id\n");
+        fprintf(logfile, "Can not get node_id\n");
+        fclose(logfile);
+        exit(1);
+    }
+    //print node id
+    printf("Node ID:%s\n", node_id);
+
+    //create ccn handle
+    struct ccn *ccn = NULL;
+
+    //connect to ccnd
+    ccn = ccn_create();
+    if (ccn_connect(ccn, NULL) == -1) {
+        fprintf(logfile, "Could not connect to ccnd");
+        fclose(logfile);
+        exit(1);
+    }
+
+    //create prefix we are interested in, register in FIB
+    int res;
+    struct ccn_charbuf *prefix = ccn_charbuf_create();
+
+    //We are interested in anythin starting with /trace
+    res = ccn_name_from_uri(prefix, "/trace");
+    if (res < 0) {
+        fprintf(logfile, "Can not convert name to URI\n");
+        fclose(logfile);
+        exit(1);
+    }
+
+    //handle for upcalls, receive notifications of incoming interests and content.
+    //specify where the reply will go
+    struct ccn_closure in_interest = {.p = &incoming_interest};
+    in_interest.data = &prefix;
+
+    //set the interest filter for prefix we created
+    res = ccn_set_interest_filter(ccn, prefix, &in_interest);
+    if (res < 0) {
+        fprintf(logfile, "Failed to register interest (res == %d)\n", res);
+        fclose(logfile);
+        exit(1);
+    }
+
+    //listen infinitely
+    res = ccn_run(ccn, -1);
+
+    //cleanup
+    ccn_destroy(&ccn);
+    ccn_charbuf_destroy(&prefix);
+    exit(0);
+}
+
+
+
+
+
+
+
+
+
+
+//                        fwd_list_index = 0;
+//                        fwd_reply
+//wait on join
+//                pthread_exit(0);
+//                                }
+//
+
+
+
+//swap the random string
+/*     swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
+     sprintf(new_interest_rand_str, "%d", new_interest_random_comp);
+     printf("new interest name %s\n", new_interest_name);
+
+#ifdef DEBUG
+     fprintf(logfile, "new interest name %s\n", new_interest_name);
+     fflush(logfile);
+#endif
+     //add to the processed list
+     processed[processed_index] = new_interest_random_comp;
+     processed_index += 1;
+
+     //add the remote route, if remote ip not in fwd_route
+     char *remote_ip_with_slash = calloc(strlen(remote_ips[remote_ip_index]) + 2 + 1, sizeof(char));
+     sprintf(remote_ip_with_slash, "%s%s%s", slash, remote_ips[remote_ip_index], slash);
+     if (strstr(new_interest_name, remote_ip_with_slash) == NULL)
+     {
+
+
+         //add the route
+         manage_route(new_interest_name, remote_ips[remote_ip_index], 0);
+
+         //create fwd interest
+         res = ccn_name_from_uri(name_fwd, new_interest_name);
+         if (res < 0)
+         {
+             fprintf(logfile, "can not convert new interest name %s\n", new_interest_name);
+             fclose(logfile);
+             exit(1);
+         }
+
+         //express interest
+         get_fwd_reply(name_fwd, new_interest_name, &*fwd_reply, &num_reply, fwd_list_index, remote_ips[remote_ip_index]);
+         fwd_list_index += num_reply;
+
+         //delete the route
+         manage_route(new_interest_name, remote_ips[remote_ip_index], 1);
+     }
+     //we are done with the new interest name, go back for the next remote ip
+     free(new_interest_name);
+     free(remote_ip_with_slash);
+
+ }
+ free((void *)forward_path);
+
+ //free remote ip list, we don't need it
+ for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
+ {
+     free(remote_ips[remote_ip_index]);
+ }*/

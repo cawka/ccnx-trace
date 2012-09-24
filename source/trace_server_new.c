@@ -803,6 +803,18 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     /// handle them as appropriate
     //-----------------------------------------------------------------------//
 
+    switch (kind) {
+
+    case CCN_UPCALL_FINAL:
+        return CCN_UPCALL_RESULT_OK;
+        break;
+
+    case CCN_UPCALL_CONTENT:
+        break;
+
+    case CCN_UPCALL_INTEREST:
+
+    {
     //status number
     int res = 0;
 
@@ -842,7 +854,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 
     return_data.num_message = 0;
 
-    char new_interest_rand_str[128] = {0};
 
     unsigned char *buffer = NULL;
     unsigned char *reset_buffer = NULL;
@@ -855,18 +866,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
           int dup_flag  = 0;
         */
     //switch on type of event
-    switch (kind) {
-
-    case CCN_UPCALL_FINAL:
-        return CCN_UPCALL_RESULT_OK;
-        break;
-
-    case CCN_UPCALL_CONTENT:
-        break;
-
-    case CCN_UPCALL_INTEREST:
-
-    {
 
 
 
@@ -1165,6 +1164,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             ccn_charbuf_destroy(&data_packet);
             ccn_charbuf_destroy(&name_fwd);
             free((void*)interest_name);
+            free((void*)forward_path);
             free((void *)longest_prefix);
             free(return_data.fwd_message);
             free(buffer);
@@ -1173,6 +1173,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 free(faces[i]);
             }
         }
+
+    
         return CCN_UPCALL_FINAL;
         break;
 
@@ -1294,7 +1296,7 @@ int main(int argc, char **argv) {
     }
 
     //listen infinitely
-    res = ccn_run(ccn, -1);
+    res = ccn_run(ccn, 15000);
 
     //cleanup
     ccn_destroy(&ccn);

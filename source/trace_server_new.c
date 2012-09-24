@@ -22,7 +22,7 @@
 #include <pthread.h>
 
 #include "node_id.h"
-#include "config.h"
+#include "conf.h"
 
 #define DEBUG
 

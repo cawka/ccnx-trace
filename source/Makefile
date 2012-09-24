@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -g -Wall -Wpointer-arith -Wreturn-type -Wstrict-prototypes
-LIBS = -lccn -lcrypto
+LIBS = -lccn -lcrypto -lpthread
 
 PROGRAM_CL = trace
 PROGRAM_SR = ccn_traced
@@ -15,11 +15,17 @@ trace: trace_client.o
 trace_client.o:
 	$(CC) $(CFLAGS) -c trace_client.c
 
-ccn_traced: trace_server.o
-	$(CC) $(CFLAGS) -o ccn_traced trace_server.o $(LIBS)
+#ccn_traced: trace_server.o
+#	$(CC) $(CFLAGS) -o ccn_traced trace_server.o $(LIBS)
+#
+#trace_server.o:
+#	$(CC) $(CFLAGS) -c trace_server.c
 
-trace_server.o:
-	$(CC) $(CFLAGS) -c trace_server.c
+ccn_traced: trace_server_new.o
+	$(CC) $(CFLAGS) -o ccn_traced trace_server_new.o $(LIBS)
+
+trace_server_new.o:
+	$(CC) $(CFLAGS) -c trace_server_new.c
 
 install: 
 	install -m 0755 $(PROGRAM_CL) $(PROGRAM_SR) $(INSTALL_DIR)

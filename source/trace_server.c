@@ -21,7 +21,7 @@
 #include <ifaddrs.h>
 
 #include "node_id.h"
-#include "config.h"
+#include "conf.h"
 
 #define DEBUG
 

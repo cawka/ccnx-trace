@@ -1340,7 +1340,7 @@ int main(int argc, char **argv)
     }
 
     //listen infinitely
-    res = ccn_run(ccn, 1);
+    res = ccn_run(ccn, -1);
 
     //cleanup
     ccn_destroy(&ccn);

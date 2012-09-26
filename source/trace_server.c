@@ -826,7 +826,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                 fclose(logfile);
                 exit(1);
             }
-printf("No route found\n");
+            printf("No route found\n");
             //replay appropriately
             return_data.message_length[0] = strlen(node_id)+1 + strlen(":NO ROUTE FOUND") ;
             return_data.fwd_message = malloc(sizeof(char *) * 1);

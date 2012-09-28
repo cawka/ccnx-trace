@@ -770,11 +770,7 @@ void *do_forwarding(void *arguments)
         pthread_exit(p_thread_reply);
     }
 
-//    sprintf(new_interest_random_comp_str, "%d", new_interest_random_comp);
-//    printf("new interest name %s\n", new_interest_name);
-
     //add route
-
     manage_route(new_interest_name, args->p_remote_ip, 0);
 
     //forward interest
@@ -791,7 +787,6 @@ void *do_forwarding(void *arguments)
     //delete route
     manage_route(new_interest_name, args->p_remote_ip, 1);
 
-
     //pack the reply for main
     p_thread_reply->status_code = 0;
     p_thread_reply->num_reply = num_reply;
@@ -803,16 +798,11 @@ void *do_forwarding(void *arguments)
     }
     pthread_exit(p_thread_reply);
 
-    //return(0);
-//    exit(0);
-
 }
-
 
 enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                                       enum ccn_upcall_kind kind, struct ccn_upcall_info *info)
 {
-
     //-----------------------------------------------------------------------//
     /// callback function, all interest matching ccnx:/trace will come here,
     /// handle them as appropriate
@@ -867,23 +857,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         //int new_interest_random_comp = 0;
         //char *new_interest_name = NULL;
 
-
         return_data.num_message = 0;
-
-
         unsigned char *buffer = NULL;
         unsigned char *reset_buffer = NULL;
         int iter = 0;
         size_t buffer_len = 0;
-
-        //char interest_rand_string[128] = {0};
-        /*
-              int processed[10000]; //duplicate removal
-              int dup_flag  = 0;
-            */
-        //switch on type of event
-
-
 
         //get the interest name and random component from incoming packet
         res = find_interest_name(info->interest_ccnb, info->pi, &interest_name,
@@ -958,7 +936,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             fflush(logfile);
 
 #endif
-
 
             //if no remote ip found, this is local
             if (num_remote_ips == 0)
@@ -1042,11 +1019,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 
                     thread_data_array[remote_ip_index].p_remote_ip = calloc(strlen((const char *)remote_ips[remote_ip_index]) +1, sizeof(char));
                     strncpy(thread_data_array[remote_ip_index].p_remote_ip, remote_ips[remote_ip_index],  strlen((const char *)remote_ips[remote_ip_index]));
-//                            thread_data_array[remote_ip_index].p_num_remote_ips = num_remote_ips;
-//                           thread_data_array[remote_ip_index].p_remote_ip = remote_ips[remote_ip_index];
-
-
-//                printf("id %d, p_interest: %s, p_rand: %s\n", remote_ip_index, thread_data_array[remote_ip_index].p_interest_name, thread_data_array[remote_ip_index].p_interest_random_str);
 
                     res = pthread_create(&forwarding_threads[remote_ip_index], NULL, (void *)&do_forwarding, (void *)&thread_data_array[remote_ip_index]);
                     if (res)
@@ -1076,14 +1048,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     }
                 }
 
-
                 for (i = 0; i<fwd_list_index; i++)
                 {
                     printf("Reply %d is %s\n", i, fwd_reply[i]);
 
                 }
-
-
 
 #ifdef DEBUG
                 printf("\n\n");
@@ -1098,9 +1067,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 
                 //process and store the replies in a data packet
                 return_data.num_message = fwd_list_index;
-                //                return_data.message_length =  malloc(return_data.num_message);
                 return_data.message_length =  (uint32_t*) calloc (return_data.num_message,sizeof(uint32_t));
-
                 if (return_data.message_length == NULL)
                 {
 
@@ -1148,7 +1115,6 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
 #endif
             fwd_message_length += return_data.message_length[iter];
         }
-
 
         //pack the buffer for sending
         buffer = malloc(sizeof(uint32_t)* (1+ return_data.num_message) + fwd_message_length);
@@ -1347,73 +1313,3 @@ int main(int argc, char **argv)
     ccn_charbuf_destroy(&prefix);
     exit(0);
 }
-
-
-
-
-
-
-
-
-
-
-//                        fwd_list_index = 0;
-//                        fwd_reply
-//wait on join
-//                pthread_exit(0);
-//                                }
-//
-
-
-
-//swap the random string
-/*     swap_random(interest_name, interest_random_comp, &new_interest_name, &new_interest_random_comp, forward_path);
-     sprintf(new_interest_rand_str, "%d", new_interest_random_comp);
-     printf("new interest name %s\n", new_interest_name);
-
-#ifdef DEBUG
-     fprintf(logfile, "new interest name %s\n", new_interest_name);
-     fflush(logfile);
-#endif
-     //add to the processed list
-     processed[processed_index] = new_interest_random_comp;
-     processed_index += 1;
-
-     //add the remote route, if remote ip not in fwd_route
-     char *remote_ip_with_slash = calloc(strlen(remote_ips[remote_ip_index]) + 2 + 1, sizeof(char));
-     sprintf(remote_ip_with_slash, "%s%s%s", slash, remote_ips[remote_ip_index], slash);
-     if (strstr(new_interest_name, remote_ip_with_slash) == NULL)
-     {
-
-
-         //add the route
-         manage_route(new_interest_name, remote_ips[remote_ip_index], 0);
-
-         //create fwd interest
-         res = ccn_name_from_uri(name_fwd, new_interest_name);
-         if (res < 0)
-         {
-             fprintf(logfile, "can not convert new interest name %s\n", new_interest_name);
-             fclose(logfile);
-             exit(1);
-         }
-
-         //express interest
-         get_fwd_reply(name_fwd, new_interest_name, &*fwd_reply, &num_reply, fwd_list_index, remote_ips[remote_ip_index]);
-         fwd_list_index += num_reply;
-
-         //delete the route
-         manage_route(new_interest_name, remote_ips[remote_ip_index], 1);
-     }
-     //we are done with the new interest name, go back for the next remote ip
-     free(new_interest_name);
-     free(remote_ip_with_slash);
-
- }
- free((void *)forward_path);
-
- //free remote ip list, we don't need it
- for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
- {
-     free(remote_ips[remote_ip_index]);
- }*/

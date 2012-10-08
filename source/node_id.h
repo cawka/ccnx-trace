@@ -8,7 +8,6 @@ char* get_ip_addresses(char *node_id)
     /*************************************************************************/ 
     struct ifaddrs *ip_addr, *ifa;                                              
     struct sockaddr_in *ipv4;                                                   
-    struct sockaddr_in6 *ipv6;                                                  
     int res;                                                                    
     const char* result;                                                         
     char buffer[128];                                                           
@@ -55,33 +54,8 @@ char* get_ip_addresses(char *node_id)
                 return(node_id);                                                      
             }                                                                   
         }                                                                       
+    }
                                                                                 
-        //Reached here, no IPv4 address found. Check for IPv6 addresses         
-        if (ifa->ifa_addr->sa_family == AF_INET6)                               
-        {                                                                       
-            ipv6 = (struct sockaddr_in6 *)(ifa->ifa_addr);                      
-            result = inet_ntop(ifa->ifa_addr->sa_family, (void *)&(ipv6->sin6_addr), buffer, sizeof(buffer));
-            if(result == NULL)                                                  
-            {                                                                   
-                fprintf(stderr, "Can not get IP address");                      
-                exit(1);                                                        
-            }                                                                   
-                                                                                
-            //loopback can not be an identifier                                 
-            else if(strcmp(buffer, "::1")==0) continue;                         
-                                                                                
-            //else, we just found an identifier, return it                      
-            else                                                                
-            {                                                                   
-                #ifdef DEBUG                                                    
-                    printf("Identifier(IPv6)%s\n", buffer);                     
-                #endif                                                          
-                strncpy(node_id, buffer, strlen(buffer));                       
-                freeifaddrs(ip_addr);                                                       
-                return(node_id);                                                      
-            }                                                                   
-        }                                                                       
-    }       
     ///Did not find any IP, return NULL
     return(NULL);                                                                  
 }

@@ -162,7 +162,6 @@ int check_duplicate_interests(char *l_interest_name, char *l_interest_rand_str, 
 {
 #ifdef DEBUG
     printf("check dup %s %s %s\n", l_interest_name, l_interest_rand_str, l_fwd_path);
-    printf("Node id%s\n", node_id);
 #endif
 
     //we want to check if the interest is from local client
@@ -847,7 +846,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         struct ccn_charbuf *name_fwd = ccn_charbuf_create();
         struct ccn_charbuf *data_packet = ccn_charbuf_create();
         int fwd_message_length = 0;
-        int num_reply=0;
+//        int num_reply=0;
         //int new_interest_random_comp = 0;
         //char *new_interest_name = NULL;
 
@@ -1025,20 +1024,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                     if ( p_thread_reply->status_code == 1)
                     {
                         fprintf(logfile, "Duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
-#ifdef DEBUG
-                        printf("Duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
-#endif
                         break;
                     }
                     else
                     {
-#ifdef DEBUG
-                        printf("num reply %d \n",  p_thread_reply->num_reply);
-#endif
                         for (remote_reply=0; remote_reply < p_thread_reply->num_reply; remote_reply++)
                         {
 #ifdef DEBUG
-                            printf("reply main %s\n", p_thread_reply->reply[remote_reply]);
+                            printf("%d of %d: reply in main %s\n",  remote_reply+1 ,p_thread_reply->num_reply,p_thread_reply->reply[remote_reply]);
 #endif
                             fwd_reply[fwd_list_index] = calloc(strlen(p_thread_reply->reply[remote_reply])+1, sizeof(char));
                             strncpy(fwd_reply[fwd_list_index], p_thread_reply->reply[remote_reply],strlen(p_thread_reply->reply[remote_reply]));
@@ -1182,6 +1175,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         fflush(logfile);
         return CCN_UPCALL_RESULT_ERR;
     }
+    return CCN_UPCALL_FINAL;
 }
 
 void usage(void)

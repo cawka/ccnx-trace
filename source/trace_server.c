@@ -670,8 +670,17 @@ static void *get_fwd_reply(void *arguments)
     }
     fprintf(logfile,"Hop count %d\n", hop_count);
     fflush(logfile);
-    
+
+    char double_node_id [256] = {0};
+    sprintf(double_node_id, "%s%s%s%s", slash, node_id, slash, node_id);
+
     int timeout_ms = 6000 + rand()%20 - hop_count*200;
+    if (strstr(new_interest_name, double_node_id)!= NULL)
+    {
+        timeout_ms *= 2;
+    }
+
+    
 
     //express interest
     res = ccn_get(ccn_fwd, ccnb_fwd, NULL, timeout_ms, resultbuf, &pcobuf, NULL, 0);

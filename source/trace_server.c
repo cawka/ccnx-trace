@@ -592,10 +592,8 @@ static void *get_fwd_reply(void *arguments)
        
     }
 
-
-    //else do the forwarding
-
-    //swap random
+    //add route
+    manage_route(new_interest_name, remote_ip, 0);
 
     int i =0;
     //char fwd_reply[100][100];
@@ -774,6 +772,9 @@ static void *get_fwd_reply(void *arguments)
     }
 
     //pack the reply for main
+    //delete route
+
+    manage_route(new_interest_name, remote_ip, 1);
     pthread_mutex_unlock(&mutex);
 
     p_thread_reply.status_code = 0;

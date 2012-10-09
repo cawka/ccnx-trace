@@ -680,7 +680,7 @@ static void *get_fwd_reply(void *arguments)
         timeout_ms *= 2;
     }
 
-    printf("Timeout %d\n", timeout);
+    printf("Timeout %d\n", timeout_ms);
     
 
     //express interest

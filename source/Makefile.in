@@ -32,7 +32,7 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = ccn_traced$(EXEEXT) trace$(EXEEXT)
+bin_PROGRAMS = ccn_traced$(EXEEXT) ccntrace$(EXEEXT)
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
@@ -53,9 +53,9 @@ PROGRAMS = $(bin_PROGRAMS)
 am_ccn_traced_OBJECTS = trace_server.$(OBJEXT)
 ccn_traced_OBJECTS = $(am_ccn_traced_OBJECTS)
 ccn_traced_DEPENDENCIES =
-am_trace_OBJECTS = trace_client.$(OBJEXT)
-trace_OBJECTS = $(am_trace_OBJECTS)
-trace_DEPENDENCIES =
+ccntrace_SOURCES = ccntrace.c
+ccntrace_OBJECTS = ccntrace.$(OBJEXT)
+ccntrace_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -64,8 +64,8 @@ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(ccn_traced_SOURCES) $(trace_SOURCES)
-DIST_SOURCES = $(ccn_traced_SOURCES) $(trace_SOURCES)
+SOURCES = $(ccn_traced_SOURCES) ccntrace.c
+DIST_SOURCES = $(ccn_traced_SOURCES) ccntrace.c
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -270,7 +270,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/trace_client.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ccntrace.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/trace_server.Po@am__quote@
 
 .c.o:
@@ -609,12 +609,12 @@ uninstall-am: uninstall-binPROGRAMS
 	uninstall-am uninstall-binPROGRAMS
 
 
-bin_PROGRAMS: ccn_traced trace
+bin_PROGRAMS: ccn_traced ccntrace
 
 ccn_traced:
 	${CC} ${AM_CFLAGS} -o $@ ${ccn_traced_SOURCES} ${ccn_traced_LDADD}
 
-trace:
+ccntrace:
 	${CC} ${AM_CFLAGS} -o $@ ${trace_SOURCES} ${trace_LDADD}
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

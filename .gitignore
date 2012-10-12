@@ -1,4 +1,7 @@
 Makefile.in
+*~
+compile
+install-sh
 configure
 depcomp
 missing

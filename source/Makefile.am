@@ -1,20 +1,11 @@
-## Process this file with automake to produce Makefile.in
+bin_PROGRAMS =  ccn_traced ccntrace
 
-CC=cc
-AM_CFLAGS=-g -Wall -Wpointer-arith -Wreturn-type -Wstrict-prototypes -I$(includedir) -L$(libdir)
+ccn_traced_SOURCES = trace_server.c conf.h node_id.h
+ccn_traced_LDADD   = $(CCNX_LIBS) $(OPENSSL_LIBS)
+ccn_traced_LDFLAGS = $(CCNX_LDFLAGS) $(OPENSSL_LDFLAGS) $(BOOST_LDFLAGS)
+ccn_traced_CFLAGS  = $(CCNX_CFLAGS) $(OPENSSL_INCLUDES)
 
-bin_PROGRAMS = ccn_traced ccntrace
-
-ccn_traced_SOURCES = trace_server.c
-ccn_traced_LDADD = -lccn -lcrypto -lpthread
-
-trace_SOURCES = trace_client.c
-trace_LDADD = -lccn -lcrypto -lpthread
-
-bin_PROGRAMS: ccn_traced ccntrace
-
-ccn_traced:
-	${CC} ${AM_CFLAGS} -o $@ ${ccn_traced_SOURCES} ${ccn_traced_LDADD}
-
-ccntrace:
-	${CC} ${AM_CFLAGS} -o $@ ${trace_SOURCES} ${trace_LDADD}
+ccntrace_SOURCES   = trace_client.c conf.h node_id.h
+ccntrace_LDADD     = $(CCNX_LIBS) $(OPENSSL_LIBS)
+ccntrace_LDFLAGS   = $(CCNX_LDFLAGS) $(OPENSSL_LDFLAGS) $(BOOST_LDFLAGS)
+ccntrace_CFLAGS    = $(CCNX_CFLAGS) $(OPENSSL_INCLUDES)

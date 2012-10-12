@@ -1,0 +1,17 @@
+Makefile.in
+configure
+depcomp
+missing
+.deps/
+Makefile
+aclocal.m4
+autom4te.cache/
+ccn_traced
+ccn_traced.dSYM/
+ccn_traced.log
+ccntrace
+ccntrace.dSYM/
+config.h
+config.log
+config.status
+stamp-h1

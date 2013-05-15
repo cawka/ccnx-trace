@@ -16,7 +16,7 @@ AX_CCNX([0.6.1],,[AC_MSG_ERROR([Required CCNx library not found])])
 AX_CHECK_OPENSSL(,[AC_MSG_ERROR([Required OpenSSL not found])])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h netinet/in.h stdlib.h string.h sys/socket.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h netinet/in.h stdlib.h string.h sys/socket.h unistd.h pthread.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T

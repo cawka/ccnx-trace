@@ -11,9 +11,9 @@
  ---------------------------
  It is recommended to install both server and client. However, they can be installed individually.
 
-    $ cd ccnx-trace/source
+    $ sh bootstrap.sh
     $ ./configure
-    $ make all
+    $ make
     $ sudo make install
 
 

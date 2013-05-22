@@ -67,6 +67,7 @@ AC_DEFUN([AX_CCNX],
       CCNX_LDFLAGS="-L$ccnx_base_tmp/$libsubdir"
       CCNX_CFLAGS="-I$ccnx_base_tmp/include"
       CCNX_LIBS="-lccn"
+      CCNX_DIR="$ccnx_base_tmp"
       found=true
       break;
     fi
@@ -109,6 +110,8 @@ AC_DEFUN([AX_CCNX],
     AC_SUBST(CCNX_CFLAGS)
     AC_SUBST(CCNX_LDFLAGS)
     AC_SUBST(CCNX_LIBS)
+    AC_SUBST(CCNX_DIR)
+    AC_DEFINE_UNQUOTED(CCNX_DIR, ["$CCNX_DIR"], [Root path for CCNx installation])
     # execute ACTION-IF-FOUND (if present):
     ifelse([$2], , :, [$2])
   fi

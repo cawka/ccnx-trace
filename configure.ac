@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT([ccnx-trace], [1.1.1], [susmit@cs.colostate.edu])
+AC_INIT([ccnx-trace], [1.1.2], [susmit@cs.colostate.edu])
 AC_CONFIG_SRCDIR([source/conf.h])
 AC_CONFIG_HEADERS([config.h])
 

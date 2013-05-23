@@ -1032,9 +1032,11 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
                 {
                     pthread_join(forwarding_threads[remote_ip_index],(void **)&p_thread_reply);
+					#ifdef DEBUG
+					printf("Pthread reply %d\n", p_thread_reply->status_code);
                     if ( p_thread_reply->status_code == 1)
                     {
-                        fprintf(logfile, "Duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
+                    //    fprintf(logfile, "Duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
                         break;
                     }
                     else

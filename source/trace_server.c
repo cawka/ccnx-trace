@@ -579,16 +579,16 @@ static void *get_fwd_reply(void *arguments)
 #endif
 
     //send back reply
-    struct thread_reply p_thread_reply;
+    struct thread_reply * p_thread_reply = calloc (1, sizeof (struct thread_reply));
 
     //do a duplicate check to enroll the new interests
     pthread_mutex_lock(&mutex);
     res = check_duplicate_interests(new_interest_name, new_interest_random_comp, args->p_forward_path);
     if (res  == 1)
     {
-       p_thread_reply.status_code = 1;
+       p_thread_reply->status_code = 1;
        pthread_mutex_unlock(&mutex);
-       pthread_exit((void *)&p_thread_reply);
+       pthread_exit((void *)p_thread_reply);
        
     }
 
@@ -787,15 +787,15 @@ static void *get_fwd_reply(void *arguments)
     manage_route(new_interest_name, remote_ip, 1);
     pthread_mutex_unlock(&mutex);
 
-    p_thread_reply.status_code = 0;
-    p_thread_reply.num_reply = num_reply;
-    p_thread_reply.reply = malloc(num_reply * sizeof(char *));
+    p_thread_reply->status_code = 0;
+    p_thread_reply->num_reply = num_reply;
+    p_thread_reply->reply = malloc(num_reply * sizeof(char *));
     for (i = 0; i<num_reply; i++)
     {
-        p_thread_reply.reply[i] = calloc(strlen(fwd_reply[i])+1 ,sizeof(char));
-        strncpy(p_thread_reply.reply[i], fwd_reply[i], strlen(fwd_reply[i]));
+        p_thread_reply->reply[i] = calloc(strlen(fwd_reply[i])+1 ,sizeof(char));
+        strncpy(p_thread_reply->reply[i], fwd_reply[i], strlen(fwd_reply[i]));
     }
-    pthread_exit((void *)&p_thread_reply);
+    pthread_exit((void *)p_thread_reply);
 
     //we are done here
 //    ccn_destroy(&ccn_fwd);
@@ -995,34 +995,34 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             //we found some remote ips for this face
             else
             {
-                struct thread_reply *p_thread_reply;
-                forwarding_threads = malloc((num_threads) * sizeof (pthread_t));
-                struct pass_thread_args args[num_threads];
-                int i;
+              struct thread_reply *p_thread_reply;
+              forwarding_threads = malloc((num_threads) * sizeof (pthread_t));
+              struct pass_thread_args args[num_threads];
+              int i;
 
-                //pack args for passing to threads
-                for(i=0; i< num_remote_ips; i++)
+              //pack args for passing to threads
+              for(i=0; i< num_remote_ips; i++)
                 {  
-                args[i].p_thread_id = i;
+                  args[i].p_thread_id = i;
 
-                args[i].p_interest_name = calloc(strlen(interest_name) + 1, sizeof(char));
-                strncpy(args[i].p_interest_name, interest_name, strlen(interest_name));
+                  args[i].p_interest_name = calloc(strlen(interest_name) + 1, sizeof(char));
+                  strncpy(args[i].p_interest_name, interest_name, strlen(interest_name));
 
-                args[i].p_interest_random_str = calloc(strlen(interest_rand_str) + 1, sizeof(char));
-                strncpy(args[i].p_interest_random_str, interest_rand_str, strlen(interest_rand_str));
+                  args[i].p_interest_random_str = calloc(strlen(interest_rand_str) + 1, sizeof(char));
+                  strncpy(args[i].p_interest_random_str, interest_rand_str, strlen(interest_rand_str));
 
-                args[i].p_forward_path = calloc(strlen(forward_path) + 1, sizeof(char));
-                strncpy(args[i].p_forward_path, forward_path, strlen(forward_path));
+                  args[i].p_forward_path = calloc(strlen(forward_path) + 1, sizeof(char));
+                  strncpy(args[i].p_forward_path, forward_path, strlen(forward_path));
 
-                args[i].p_remote_ip = calloc(strlen(remote_ips[i]) + 1, sizeof(char));
-                strncpy(args[i].p_remote_ip, remote_ips[i], strlen(remote_ips[i]));
+                  args[i].p_remote_ip = calloc(strlen(remote_ips[i]) + 1, sizeof(char));
+                  strncpy(args[i].p_remote_ip, remote_ips[i], strlen(remote_ips[i]));
 
-                //create threads
-                if (pthread_create(&forwarding_threads[i], NULL, get_fwd_reply, (void *)&args[i]) != 0) 
-                {
-                     fprintf(logfile, "Error creating thread!\n");
-                     fflush(logfile);
-                     break;
+                  //create threads
+                  if (pthread_create(&forwarding_threads[i], NULL, get_fwd_reply, (void *)&args[i]) != 0) 
+                    {
+                      fprintf(logfile, "Error creating thread!\n");
+                      fflush(logfile);
+                      break;
 
                     }  
 
@@ -1031,26 +1031,30 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
                fwd_reply = malloc(1000 * sizeof(char *));
                for (remote_ip_index = 0; remote_ip_index<num_remote_ips; remote_ip_index++)
                 {
-                    pthread_join(forwarding_threads[remote_ip_index],(void **)&p_thread_reply);
-					#ifdef DEBUG
-					printf("Pthread reply %d\n", p_thread_reply->status_code);
-                    if ( p_thread_reply->status_code == 1)
-                    {
-                    //    fprintf(logfile, "Duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
-                        break;
-                    }
-                    else
-                    {
-                        for (remote_reply=0; remote_reply < p_thread_reply->num_reply; remote_reply++)
-                        {
+                    int ret = pthread_join(forwarding_threads[remote_ip_index],(void **)&p_thread_reply);
+                    /* fprintf (stderr, "pthread join returned: %d\n", ret); */
+                    if (ret == 0)
+                      {
+                        if ( p_thread_reply->status_code == 1)
+                          {
+                            //    fprintf(logfile, "Duplicate interest %s%s%s\n", interest_name, slash, interest_rand_str);
+                            break;
+                          }
+                        else
+                          {
+                            for (remote_reply=0; remote_reply < p_thread_reply->num_reply; remote_reply++)
+                              {
 #ifdef DEBUG
-                            printf("%d of %d: reply in main %s\n",  remote_reply+1 ,p_thread_reply->num_reply,p_thread_reply->reply[remote_reply]);
+                                printf("%d of %d: reply in main %s\n",  remote_reply+1 ,p_thread_reply->num_reply,p_thread_reply->reply[remote_reply]);
 #endif
-                            fwd_reply[fwd_list_index] = calloc(strlen(p_thread_reply->reply[remote_reply])+1, sizeof(char));
-                            strncpy(fwd_reply[fwd_list_index], p_thread_reply->reply[remote_reply],strlen(p_thread_reply->reply[remote_reply]));
-                            fwd_list_index++;
-                        }
-                    }
+                                fwd_reply[fwd_list_index] = calloc(strlen(p_thread_reply->reply[remote_reply])+1, sizeof(char));
+                                strncpy(fwd_reply[fwd_list_index], p_thread_reply->reply[remote_reply],strlen(p_thread_reply->reply[remote_reply]));
+                                fwd_list_index++;
+                              }
+                          }
+
+                        free (p_thread_reply);
+                      }
                 }
                 printf("\n\n");
                 for (i = 0; i < fwd_list_index; i++)

@@ -5,15 +5,15 @@
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
-#include <ccn/ccn.h>
-#include <ccn/uri.h>
-#include <ccn/keystore.h>
-#include <ccn/signing.h>
-#include <ccn/charbuf.h>
-#include <ccn/reg_mgmt.h>
-#include <ccn/ccn_private.h>
-#include <ccn/ccnd.h>
-#include <ccn/hashtb.h>
+#include <ndn/ndn.h>
+#include <ndn/uri.h>
+#include <ndn/keystore.h>
+#include <ndn/signing.h>
+#include <ndn/charbuf.h>
+#include <ndn/reg_mgmt.h>
+#include <ndn/ndn_private.h>
+#include <ndn/ndnd.h>
+#include <ndn/hashtb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -75,7 +75,7 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 int find_interest_name(const unsigned char *interest_msg,
-                       struct ccn_parsed_interest *pi, char **interest_name,
+                       struct ndn_parsed_interest *pi, char **interest_name,
                        char **interest_rand_str, char **forward_path)
 {
     //-----------------------------------------------------------------------//
@@ -86,9 +86,9 @@ int find_interest_name(const unsigned char *interest_msg,
     //get the full interest name
     int res;
 
-    struct ccn_charbuf *name = ccn_charbuf_create();
-    res = ccn_charbuf_append(name, interest_msg + pi->offset[CCN_PI_B_Name],
-                             pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name]);
+    struct ndn_charbuf *name = ndn_charbuf_create();
+    res = ndn_charbuf_append(name, interest_msg + pi->offset[NDN_PI_B_Name],
+                             pi->offset[NDN_PI_E_Name] - pi->offset[NDN_PI_B_Name]);
     if (res < 0)
     {
         fprintf(logfile, "find_interest_name: Could not get interest name. Res = %d\n", res);
@@ -96,19 +96,19 @@ int find_interest_name(const unsigned char *interest_msg,
         return(1);
     }
 
-    struct ccn_charbuf *uri = ccn_charbuf_create();
-    ccn_uri_append(uri, name->buf, name->length, 1);
-    fprintf(logfile, "\nIncoming Interest = %s\n", ccn_charbuf_as_string(uri));
+    struct ndn_charbuf *uri = ndn_charbuf_create();
+    ndn_uri_append(uri, name->buf, name->length, 1);
+    fprintf(logfile, "\nIncoming Interest = %s\n", ndn_charbuf_as_string(uri));
     fflush(logfile);
 
     //copy the name over to a string, set the reset pointer to string
-    char *uri_string = malloc(strlen(ccn_charbuf_as_string(uri))+1);
+    char *uri_string = malloc(strlen(ndn_charbuf_as_string(uri))+1);
     char *reset_uri_string;
-    strcpy(uri_string, ccn_charbuf_as_string(uri));
+    strcpy(uri_string, ndn_charbuf_as_string(uri));
 
-    //remove the ccnx:/trace from the beginning of interest name
+    //remove the ndnx:/trace from the beginning of interest name
     reset_uri_string = uri_string;
-    uri_string = uri_string + strlen("ccnx:/trace");
+    uri_string = uri_string + strlen("ndnx:/trace");
 
     //break the uri in two parts, uri and forward path
     char *fwd_path, *base_uri;
@@ -132,7 +132,7 @@ int find_interest_name(const unsigned char *interest_msg,
     sprintf((char *)*forward_path, "%s%s", fwd_path, slash);
 
     //get the remaining name, set it to interest name
-    //uri - -len of ccnx:/trace - len of last component - 1 for the / + 1 for the \n
+    //uri - -len of ndnx:/trace - len of last component - 1 for the / + 1 for the \n
     int truncated_uri_length =  strlen(uri_string) - strlen(l_random_component) - 1 ;
     fprintf(logfile, "uri length%d\n", truncated_uri_length);
     fflush(logfile);
@@ -151,8 +151,8 @@ int find_interest_name(const unsigned char *interest_msg,
     //free data structures
     //reset before freeing string
     uri_string = reset_uri_string;
-    ccn_charbuf_destroy(&name);
-    ccn_charbuf_destroy(&uri);
+    ndn_charbuf_destroy(&name);
+    ndn_charbuf_destroy(&uri);
     free(uri_string);
     return(0);
 }
@@ -224,18 +224,18 @@ int get_faces(char *interest_name, char **faces, int *num_faces, const unsigned 
     //make a duplicate of interest name
     char *search_str;
 
-    //allocate two extra bytes, one for newline, one for ccnx:/ for default
-    if ((search_str = malloc (strlen((const char *)interest_name) + strlen("ccnx:") + 2)) != NULL)
+    //allocate two extra bytes, one for newline, one for ndnx:/ for default
+    if ((search_str = malloc (strlen((const char *)interest_name) + strlen("ndnx:") + 2)) != NULL)
     {
         //strcpy (search_str, (const char*)interest_name);
-        sprintf (search_str, "%s%s", "ccnx:", (const char*)interest_name);
+        sprintf (search_str, "%s%s", "ndnx:", (const char*)interest_name);
     }
     int len_search_str = strlen((const char *)search_str);
 
-    //parse the ccndstatus for match
+    //parse the ndndstatus for match
     while (len_search_str > 0)
     {
-        sprintf(command_find_faces, "%s%s%s%s", CCN_DIR, "ccndstatus|grep '", search_str, " '|awk -F 'face:' '{print $2}' |awk '{print $1}'|sort|uniq");
+        sprintf(command_find_faces, "%s%s%s%s", NDN_DIR, "ndndstatus|grep '", search_str, " '|awk -F 'face:' '{print $2}' |awk '{print $1}'|sort|uniq");
         fprintf(logfile, "%s\n", command_find_faces);
         fflush(logfile);
 
@@ -243,7 +243,7 @@ int get_faces(char *interest_name, char **faces, int *num_faces, const unsigned 
         FILE *fp = popen(command_find_faces, "r");
         if (fp == NULL)
         {
-            fprintf(logfile, "can not execute ccndstatus\n");
+            fprintf(logfile, "can not execute ndndstatus\n");
             fclose(logfile);
             pclose(fp);
             exit(1);
@@ -274,7 +274,7 @@ int get_faces(char *interest_name, char **faces, int *num_faces, const unsigned 
             strcpy((char *)*longest_match, search_str);
 
             //find the fib entry that matched, mind the space at the end of search str, don't do -w
-            sprintf(command_fib_entry, "%s%s%s%s", CCN_DIR, "ccndstatus|grep '", search_str, " '|awk '{print $1}'|head -n 1");
+            sprintf(command_fib_entry, "%s%s%s%s", NDN_DIR, "ndndstatus|grep '", search_str, " '|awk '{print $1}'|head -n 1");
             fprintf(logfile, "%s\n", command_fib_entry);
             fflush(logfile);
 
@@ -282,7 +282,7 @@ int get_faces(char *interest_name, char **faces, int *num_faces, const unsigned 
             fp = popen(command_fib_entry, "r");
             if (fp == NULL)
             {
-                fprintf(logfile, "can not execute ccndstatus\n");
+                fprintf(logfile, "can not execute ndndstatus\n");
                 fclose(logfile);
                 pclose(fp);
                 exit(1);
@@ -320,12 +320,12 @@ int get_faces(char *interest_name, char **faces, int *num_faces, const unsigned 
         fflush(logfile);
 
         //search for default route
-        if (strcmp(search_str, "ccnx:") == 0 && default_rt_flag == 0)
+        if (strcmp(search_str, "ndnx:") == 0 && default_rt_flag == 0)
         {
-            sprintf(search_str, "%s", "ccnx:/");
+            sprintf(search_str, "%s", "ndnx:/");
             default_rt_flag = 1;
         }
-        else if (strcmp(search_str, "ccnx:") == 0)
+        else if (strcmp(search_str, "ndnx:") == 0)
             break;
         len_search_str = strlen(search_str);
     }
@@ -355,14 +355,14 @@ int find_remote_ip(char **face, int number_faces, char **return_ips, int *num_re
     //for each face, find the matching ip address
     for (iter1 = 0; iter1 < number_faces; iter1++)
     {
-        sprintf(command2, "%s%s%s%s", CCN_DIR, "ccndstatus |grep -w 'pending'|grep -w 'face: ", face[iter1], "'|awk -F 'remote:' '{print $2}' |awk -F ':' '{print $1}'|tr -s '\\n'|head -n 1");
+        sprintf(command2, "%s%s%s%s", NDN_DIR, "ndndstatus |grep -w 'pending'|grep -w 'face: ", face[iter1], "'|awk -F 'remote:' '{print $2}' |awk -F ':' '{print $1}'|tr -s '\\n'|head -n 1");
         fprintf(logfile, "Command_face %s\n", command2);
         
         //execute command
         FILE *fp2 = popen(command2, "r");
         if (fp2 == NULL)
         {
-            fprintf(logfile, "can not execute ccndstatus\n");
+            fprintf(logfile, "can not execute ndndstatus\n");
             fclose(logfile);
             pclose(fp2);
             exit(1);
@@ -445,7 +445,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
     //if we are adding route
     if (action == 0)
     {
-        int add_route_length = strlen(CCN_DIR) +strlen("ccndc add ") + strlen(forwarding_interest_name) + strlen(" udp") +  strlen(fwd_ip) +1;
+        int add_route_length = strlen(NDN_DIR) +strlen("ndndc add ") + strlen(forwarding_interest_name) + strlen(" udp") +  strlen(fwd_ip) +1;
         char *add_route = malloc(add_route_length);
         if (add_route == NULL)
         {
@@ -453,7 +453,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
             fclose(logfile);
             exit(1);
         }
-        sprintf(add_route, "%s%s%s%s%s", CCN_DIR, "ccndc add ", forwarding_interest_name, " udp", fwd_ip);
+        sprintf(add_route, "%s%s%s%s%s", NDN_DIR, "ndndc add ", forwarding_interest_name, " udp", fwd_ip);
         fprintf(logfile, "adding route %s\n", add_route);
         fflush(logfile);
 
@@ -473,7 +473,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
     //delete a route
     else if (action == 1)
     {
-        int del_route_length = strlen(CCN_DIR) + strlen("ccndc del ") + strlen(forwarding_interest_name) + strlen(" udp") +  strlen(fwd_ip) +1;
+        int del_route_length = strlen(NDN_DIR) + strlen("ndndc del ") + strlen(forwarding_interest_name) + strlen(" udp") +  strlen(fwd_ip) +1;
         char *del_route = malloc(del_route_length);
         if (del_route == NULL)
         {
@@ -482,7 +482,7 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
             exit(1);
         }
 
-        sprintf(del_route, "%s%s%s%s%s", CCN_DIR, "ccndc del ", forwarding_interest_name, " udp", fwd_ip);
+        sprintf(del_route, "%s%s%s%s%s", NDN_DIR, "ndndc del ", forwarding_interest_name, " udp", fwd_ip);
         fprintf(logfile,"deleting route %s\n", del_route);
         fflush(logfile);
 
@@ -501,19 +501,19 @@ const unsigned char* manage_route(char *forwarding_interest_name, char *fwd_ip, 
     return(0);
 }
 
-int construct_trace_response(struct ccn *h, struct ccn_charbuf *data,
-                             const unsigned char *interest_msg, const struct ccn_parsed_interest *pi, unsigned char *mymsg, size_t size)
+int construct_trace_response(struct ndn *h, struct ndn_charbuf *data,
+                             const unsigned char *interest_msg, const struct ndn_parsed_interest *pi, unsigned char *mymsg, size_t size)
 {
 
     //-----------------------------------------------------------------------//
     /// Constructs the trace response, signs them. data is sent by upcall
     //-----------------------------------------------------------------------//
 
-    struct ccn_charbuf *name = ccn_charbuf_create();
-    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    struct ndn_charbuf *name = ndn_charbuf_create();
+    struct ndn_signing_params sp = NDN_SIGNING_PARAMS_INIT;
     int res;
-    res = ccn_charbuf_append(name, interest_msg + pi->offset[CCN_PI_B_Name],
-                             pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name]);
+    res = ndn_charbuf_append(name, interest_msg + pi->offset[NDN_PI_B_Name],
+                             pi->offset[NDN_PI_E_Name] - pi->offset[NDN_PI_B_Name]);
     if (res == -1)
     {
         fprintf(logfile, "Can not copy interest name to buffer\n");
@@ -522,7 +522,7 @@ int construct_trace_response(struct ccn *h, struct ccn_charbuf *data,
     }
 
     //sign the content, check if keystore exsists
-    res = ccn_sign_content(h, data, name, &sp,  mymsg, size);
+    res = ndn_sign_content(h, data, name, &sp,  mymsg, size);
     if (res == -1)
     {
         fprintf(logfile, "Can not sign content\n");
@@ -531,8 +531,8 @@ int construct_trace_response(struct ccn *h, struct ccn_charbuf *data,
     }
 
     //free memory and return
-    ccn_charbuf_destroy(&sp.template_ccnb);
-    ccn_charbuf_destroy(&name);
+    ndn_charbuf_destroy(&sp.template_ndnb);
+    ndn_charbuf_destroy(&name);
     return res;
 }
 
@@ -603,23 +603,23 @@ static void *get_fwd_reply(void *arguments)
     struct data mymsg;
     mymsg.num_message = 0;
 
-    //create the ccn handle
-    struct ccn *ccn_fwd = ccn_create();
-    if (ccn_fwd == NULL)
+    //create the ndn handle
+    struct ndn *ndn_fwd = ndn_create();
+    if (ndn_fwd == NULL)
     {
-        fprintf(logfile, "Can not create ccn handle\n");
+        fprintf(logfile, "Can not create ndn handle\n");
         fclose(logfile);
         exit(1);
     }
 
-    struct ccn_charbuf *ccnb_fwd = ccn_charbuf_create();
-    if (ccnb_fwd == NULL)
+    struct ndn_charbuf *ndnb_fwd = ndn_charbuf_create();
+    if (ndnb_fwd == NULL)
     {
         fprintf(logfile, "Can not allocate memory for interest\n");
         fclose(logfile);
         exit(1);
     }
-    res = ccn_name_from_uri(ccnb_fwd, (const char *)new_interest_name);
+    res = ndn_name_from_uri(ndnb_fwd, (const char *)new_interest_name);
     if (res == -1)
     {
         fprintf(logfile, "Failed to assign name to interest");
@@ -627,19 +627,19 @@ static void *get_fwd_reply(void *arguments)
         exit(1);
     }
 
-    //connect to ccnd
-    res = ccn_connect(ccn_fwd, NULL);
+    //connect to ndnd
+    res = ndn_connect(ndn_fwd, NULL);
     if (res == -1)
     {
-        fprintf(logfile, "Could not connect to ccnd... exiting\n");
+        fprintf(logfile, "Could not connect to ndnd... exiting\n");
         fclose(logfile);
         exit(1);
     }
-    fprintf(logfile, "Connected to CCND, return code: %d\n", res);
+    fprintf(logfile, "Connected to NDND, return code: %d\n", res);
     fflush(logfile);
         
     //allocate buffer for response
-    struct ccn_charbuf *resultbuf = ccn_charbuf_create();
+    struct ndn_charbuf *resultbuf = ndn_charbuf_create();
     if (resultbuf == NULL)
     {
         fprintf(logfile, "Can not allocate memory for URI\n");
@@ -647,11 +647,11 @@ static void *get_fwd_reply(void *arguments)
         exit(1);
     }
 
-    //setting the parameters for ccn_get
-    struct ccn_parsed_ContentObject pcobuf = { 0 };
+    //setting the parameters for ndn_get
+    struct ndn_parsed_ContentObject pcobuf = { 0 };
     pthread_mutex_unlock(&mutex);
 
-    //randomize the ccn_get so that the nodes don't sync
+    //randomize the ndn_get so that the nodes don't sync
     //if request is from local client, increase the timeout by 4
 
     int pos = 0;
@@ -684,7 +684,7 @@ static void *get_fwd_reply(void *arguments)
     
 
     //express interest
-    res = ccn_get(ccn_fwd, ccnb_fwd, NULL, timeout_ms, resultbuf, &pcobuf, NULL, 0);
+    res = ndn_get(ndn_fwd, ndnb_fwd, NULL, timeout_ms, resultbuf, &pcobuf, NULL, 0);
     if (res == -1)
     {
 #ifdef DEBUG
@@ -714,7 +714,7 @@ static void *get_fwd_reply(void *arguments)
         size_t length;
         ptr = resultbuf->buf;
         length = resultbuf->length;
-        ccn_content_get_value(ptr, length, &pcobuf, &ptr, &length);
+        ndn_content_get_value(ptr, length, &pcobuf, &ptr, &length);
 
         //check if received some data
         if (length == 0)
@@ -798,31 +798,31 @@ static void *get_fwd_reply(void *arguments)
     pthread_exit((void *)p_thread_reply);
 
     //we are done here
-//    ccn_destroy(&ccn_fwd);
-//    ccn_charbuf_destroy(&resultbuf);
-//    ccn_charbuf_destroy(&ccnb_fwd);
+//    ndn_destroy(&ndn_fwd);
+//    ndn_charbuf_destroy(&resultbuf);
+//    ndn_charbuf_destroy(&ndnb_fwd);
 
 }
 
-enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
-                                      enum ccn_upcall_kind kind, struct ccn_upcall_info *info)
+enum ndn_upcall_res incoming_interest(struct ndn_closure *selfp,
+                                      enum ndn_upcall_kind kind, struct ndn_upcall_info *info)
 {
     //-----------------------------------------------------------------------//
-    /// callback function, all interest matching ccnx:/trace will come here,
+    /// callback function, all interest matching ndnx:/trace will come here,
     /// handle them as appropriate
     //-----------------------------------------------------------------------//
 
     switch (kind)
     {
 
-    case CCN_UPCALL_FINAL:
-        return CCN_UPCALL_RESULT_OK;
+    case NDN_UPCALL_FINAL:
+        return NDN_UPCALL_RESULT_OK;
         break;
 
-    case CCN_UPCALL_CONTENT:
+    case NDN_UPCALL_CONTENT:
         break;
 
-    case CCN_UPCALL_INTEREST:
+    case NDN_UPCALL_INTEREST:
 
     {
         //status number
@@ -854,8 +854,8 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         int fwd_list_index = 0;
 
         //data structures for forwarding interests
-        struct ccn_charbuf *name_fwd = ccn_charbuf_create();
-        struct ccn_charbuf *data_packet = ccn_charbuf_create();
+        struct ndn_charbuf *name_fwd = ndn_charbuf_create();
+        struct ndn_charbuf *data_packet = ndn_charbuf_create();
         int fwd_message_length = 0;
 //        int num_reply=0;
         //int new_interest_random_comp = 0;
@@ -871,7 +871,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         int num_threads = 256;
 
         //get the interest name and random component from incoming packet
-        res = find_interest_name(info->interest_ccnb, info->pi, &interest_name,
+        res = find_interest_name(info->interest_ndnb, info->pi, &interest_name,
                                  &interest_rand_str, &forward_path);
         if (res !=0)
         {
@@ -949,7 +949,7 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
             //if no remote ip found, this is local
             if (num_remote_ips == 0)
             {
-                //does the name matches with longest prefix(without ccnx:)? otherwise, no such content
+                //does the name matches with longest prefix(without ndnx:)? otherwise, no such content
                 if (strcmp((const char *)interest_name, (const char *)matching_fib_entry+5) == 0)
                 {
 #ifdef DEBUG
@@ -1155,12 +1155,12 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         buffer = reset_buffer;
 
         //send data packet
-        construct_trace_response(info->h, data_packet, info->interest_ccnb, info->pi, buffer, buffer_len);
-        res = ccn_put(info->h, data_packet->buf, data_packet->length);
+        construct_trace_response(info->h, data_packet, info->interest_ndnb, info->pi, buffer, buffer_len);
+        res = ndn_put(info->h, data_packet->buf, data_packet->length);
         printf("\n");
  //free all the allocate memory     1169    
-        ccn_charbuf_destroy(&data_packet);      
-        ccn_charbuf_destroy(&name_fwd);         
+        ndn_charbuf_destroy(&data_packet);      
+        ndn_charbuf_destroy(&name_fwd);         
         free((void*)interest_name);         
         free((void*)forward_path);      
         free((void *)longest_prefix);       
@@ -1168,31 +1168,31 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         free(buffer);       
     }
 
-//    return CCN_UPCALL_FINAL;
+//    return NDN_UPCALL_FINAL;
     break;
 
-    case CCN_UPCALL_INTEREST_TIMED_OUT:
+    case NDN_UPCALL_INTEREST_TIMED_OUT:
         fprintf(logfile, "request timed out - retrying\n");
 
         fflush(logfile);
-        return CCN_UPCALL_RESULT_REEXPRESS;
+        return NDN_UPCALL_RESULT_REEXPRESS;
 
-    case CCN_UPCALL_CONTENT_UNVERIFIED:
+    case NDN_UPCALL_CONTENT_UNVERIFIED:
         fprintf(logfile, "Could not verify content");
         fflush(logfile);
-        return CCN_UPCALL_RESULT_ERR;
+        return NDN_UPCALL_RESULT_ERR;
 
-    case CCN_UPCALL_CONTENT_BAD:
+    case NDN_UPCALL_CONTENT_BAD:
         fprintf(logfile, "Bad content\n");
         fflush(logfile);
-        return CCN_UPCALL_RESULT_ERR;
+        return NDN_UPCALL_RESULT_ERR;
 
     default:
         fprintf(logfile, "Unexpected response\n");
         fflush(logfile);
-        return CCN_UPCALL_RESULT_ERR;
+        return NDN_UPCALL_RESULT_ERR;
     }
-    return CCN_UPCALL_FINAL;
+    return NDN_UPCALL_FINAL;
 }
 
 void usage(void)
@@ -1218,10 +1218,10 @@ int main(int argc, char **argv)
     }
 
 
-    //check ccn_path
-    if (CCN_DIR[strlen(CCN_DIR) - 1] != '/')
+    //check ndn_path
+    if (NDN_DIR[strlen(NDN_DIR) - 1] != '/')
     {
-        printf("Please provide CCNx path with a trailing slash\n");
+        printf("Please provide NDNx path with a trailing slash\n");
         exit(1);
     }
 
@@ -1259,24 +1259,24 @@ int main(int argc, char **argv)
     //print node id
     printf("Node ID:%s\n", node_id);
 
-    //create ccn handle
-    struct ccn *ccn = NULL;
+    //create ndn handle
+    struct ndn *ndn = NULL;
 
-    //connect to ccnd
-    ccn = ccn_create();
-    if (ccn_connect(ccn, NULL) == -1)
+    //connect to ndnd
+    ndn = ndn_create();
+    if (ndn_connect(ndn, NULL) == -1)
     {
-        fprintf(logfile, "Could not connect to ccnd");
+        fprintf(logfile, "Could not connect to ndnd");
         fclose(logfile);
         exit(1);
     }
 
     //create prefix we are interested in, register in FIB
     int res;
-    struct ccn_charbuf *prefix = ccn_charbuf_create();
+    struct ndn_charbuf *prefix = ndn_charbuf_create();
 
     //We are interested in anythin starting with /trace
-    res = ccn_name_from_uri(prefix, "/trace");
+    res = ndn_name_from_uri(prefix, "/trace");
     if (res < 0)
     {
         fprintf(logfile, "Can not convert name to URI\n");
@@ -1286,11 +1286,11 @@ int main(int argc, char **argv)
 
     //handle for upcalls, receive notifications of incoming interests and content.
     //specify where the reply will go
-    struct ccn_closure in_interest = {.p = &incoming_interest};
+    struct ndn_closure in_interest = {.p = &incoming_interest};
     in_interest.data = &prefix;
 
     //set the interest filter for prefix we created
-    res = ccn_set_interest_filter(ccn, prefix, &in_interest);
+    res = ndn_set_interest_filter(ndn, prefix, &in_interest);
     if (res < 0)
     {
         fprintf(logfile, "Failed to register interest (res == %d)\n", res);
@@ -1299,10 +1299,10 @@ int main(int argc, char **argv)
     }
 
     //listen infinitely
-    res = ccn_run(ccn, -1);
+    res = ndn_run(ndn, -1);
 
     //cleanup
-    ccn_destroy(&ccn);
-    ccn_charbuf_destroy(&prefix);
+    ndn_destroy(&ndn);
+    ndn_charbuf_destroy(&prefix);
     exit(0);
 }

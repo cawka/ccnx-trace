@@ -4,10 +4,10 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <ccn/ccn.h>
-#include <ccn/uri.h>
-#include <ccn/keystore.h>
-#include <ccn/signing.h>
+#include <ndn/ndn.h>
+#include <ndn/uri.h>
+#include <ndn/keystore.h>
+#include <ndn/signing.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -35,10 +35,10 @@ struct data
 };
 
 
-enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
-                                      enum ccn_upcall_kind kind, struct ccn_upcall_info *info)
+enum ndn_upcall_res incoming_interest(struct ndn_closure *selfp,
+                                      enum ndn_upcall_kind kind, struct ndn_upcall_info *info)
 {
-    //this is the callback function, all interest matching ccnx:/trace
+    //this is the callback function, all interest matching ndnx:/trace
     //will come here, handle them as appropriate
     int res = 0;
     const unsigned char *ptr;
@@ -54,14 +54,14 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
     //switch on type of event
     switch (kind)
     {
-    case CCN_UPCALL_FINAL:
+    case NDN_UPCALL_FINAL:
         free(selfp);
-        return CCN_UPCALL_RESULT_OK;
+        return NDN_UPCALL_RESULT_OK;
 
-    case CCN_UPCALL_CONTENT:
+    case NDN_UPCALL_CONTENT:
 
         //get the content from packet
-        res = ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, &ptr, &length);
+        res = ndn_content_get_value(info->content_ndnb, info->pco->offset[NDN_PCO_E], info->pco, &ptr, &length);
         if (res < 0)
         {
             printf("Can not get value from content. res: %d", res);
@@ -118,27 +118,27 @@ enum ccn_upcall_res incoming_interest(struct ccn_closure *selfp,
         exit(0);
         break;
 
-        //default timeout in ccn is 4 secs, number of retries are decided by timeout argument
+        //default timeout in ndn is 4 secs, number of retries are decided by timeout argument
         //devided by 4 secs.
-    case CCN_UPCALL_INTEREST_TIMED_OUT:
+    case NDN_UPCALL_INTEREST_TIMED_OUT:
         printf("asked again...waiting for reply\n");
-        return CCN_UPCALL_RESULT_REEXPRESS;
+        return NDN_UPCALL_RESULT_REEXPRESS;
 
-    case CCN_UPCALL_CONTENT_UNVERIFIED:
+    case NDN_UPCALL_CONTENT_UNVERIFIED:
         fprintf(stderr, "%s: Error - Could not verify content\n\n", CLI_PROGRAM);
-        return CCN_UPCALL_RESULT_ERR;
+        return NDN_UPCALL_RESULT_ERR;
 
-    case CCN_UPCALL_CONTENT_BAD:
+    case NDN_UPCALL_CONTENT_BAD:
         fprintf(stderr, "%s: Error - Bad content\n\n", CLI_PROGRAM);
-        return CCN_UPCALL_RESULT_ERR;
+        return NDN_UPCALL_RESULT_ERR;
 
-    case CCN_UPCALL_INTEREST:
+    case NDN_UPCALL_INTEREST:
         //don't care about interests, will do nothing
         break;
 
     default:
         printf("Unexpected response\n");
-        return CCN_UPCALL_RESULT_ERR;
+        return NDN_UPCALL_RESULT_ERR;
 
     }
 
@@ -221,16 +221,16 @@ int main(int argc, char *argv[])
     //get the length of user provided URI
     size_t argv_length = strlen(URI);
 
-    //check first six chars for ccnx:/, if present, skip them
+    //check first six chars for ndnx:/, if present, skip them
     int skip = 0;
-    res = strncmp("ccnx:/", URI, 6);
+    res = strncmp("ndnx:/", URI, 6);
     if(res == 0)
     {
         skip = 5;
     }
 
 
-    if(strncmp("ccnx:/trace", URI, 11) == 0 || strncmp("/trace", URI, 6)== 0)
+    if(strncmp("ndnx:/trace", URI, 11) == 0 || strncmp("/trace", URI, 6)== 0)
     {
         printf("Don't include /trace in the URI\n");
         usage();  
@@ -274,8 +274,8 @@ int main(int argc, char *argv[])
 
 
     //allocate memory for interest
-    struct ccn_charbuf *ccnb = ccn_charbuf_create();
-    if(ccnb == NULL)
+    struct ndn_charbuf *ndnb = ndn_charbuf_create();
+    if(ndnb == NULL)
     {
         fprintf(stderr, "Can not allocate memory for interest\n");
         exit(1);
@@ -283,31 +283,31 @@ int main(int argc, char *argv[])
 
 
     //adding name to interest
-    res = ccn_name_from_uri(ccnb, TRACE_URI);
+    res = ndn_name_from_uri(ndnb, TRACE_URI);
     if(res == -1)
     {
         fprintf(stderr, "Failed to assign name to interest");
         exit(1);
     }
 
-    //create the ccn handle
-    struct ccn *ccn = ccn_create();
-    if(ccn == NULL)
+    //create the ndn handle
+    struct ndn *ndn = ndn_create();
+    if(ndn == NULL)
     {
-        fprintf(stderr, "Can not create ccn handle\n");
+        fprintf(stderr, "Can not create ndn handle\n");
         exit(1);
     }
 
-    //connect to ccnd
-    res = ccn_connect(ccn, NULL);
+    //connect to ndnd
+    res = ndn_connect(ndn, NULL);
     if (res == -1)
     {
-        fprintf(stderr, "Could not connect to ccnd... exiting\n");
+        fprintf(stderr, "Could not connect to ndnd... exiting\n");
         exit(1);
     }
 
 #ifdef DEBUG
-    printf("Connected to CCND, return code: %d\n", res);
+    printf("Connected to NDND, return code: %d\n", res);
 #endif
 
     printf("trace to %s\n", URI);
@@ -315,10 +315,10 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
     printf("Full interest name %s\n", TRACE_URI);
 #endif
-    struct ccn_closure *incoming;
+    struct ndn_closure *incoming;
     incoming = calloc(1, sizeof(*incoming));
     incoming->p = incoming_interest;
-    res = ccn_express_interest(ccn, ccnb, incoming, NULL);
+    res = ndn_express_interest(ndn, ndnb, incoming, NULL);
     if (res == -1)
     {
         fprintf(stderr, "Could not express interest for %s\n", URI);
@@ -327,17 +327,17 @@ int main(int argc, char *argv[])
 
 
     //run for timeout miliseconds
-    res = ccn_run(ccn, timeout_ms);
+    res = ndn_run(ndn, timeout_ms);
     if (res < 0)
     {
-        fprintf(stderr, "ccn_run error\n");
+        fprintf(stderr, "ndn_run error\n");
         exit(1);
     }
 
-    //there is a memory leak for incoming, figure a way to free ccn_closure
+    //there is a memory leak for incoming, figure a way to free ndn_closure
     free(TRACE_URI);
-    ccn_charbuf_destroy(&ccnb);
-    ccn_destroy(&ccn);
+    ndn_charbuf_destroy(&ndnb);
+    ndn_destroy(&ndn);
     exit(0);
 
 }

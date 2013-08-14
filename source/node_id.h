@@ -2,7 +2,7 @@ char* get_ip_addresses(char *node_id)
 {                                                                               
     /*************************************************************************/ 
     ///This function returns one IP address of the node it is running on. This   
-    ///IP address (IPv4 or IPv6) is used as a node identifier for CCN trace. 
+    ///IP address (IPv4 or IPv6) is used as a node identifier for NDN trace. 
     //Note that IP address here is just an identifier and can be replaced by 
     //any other unique node identifier.                                              
     /*************************************************************************/ 

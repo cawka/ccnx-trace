@@ -1,10 +1,10 @@
  SOURCE CODE
  -----------
- Source code can be checked out from ccnx-trace repository.
+ Source code can be checked out from ndnx-trace repository.
 
- $ git clone https://code.google.com/p/ccnx-trace/
+ $ git clone https://code.google.com/p/ndnx-trace/
 
- This would create a directory named ccnx-trace
+ This would create a directory named ndnx-trace
 
 
  INSTALLATION OVERVIEW
@@ -21,13 +21,13 @@
  --------------
  The program can be uninstalled using make uninstall.
 
-    $ cd ccnx-trace/source
+    $ cd ndnx-trace/source
     $ sudo make uninstall
 
             
  NOTES
  -----
 
- o Make sure you have ccnx and openssl-devel installed. Otherwise the installation will fail.
+ o Make sure you have ndnx and openssl-devel installed. Otherwise the installation will fail.
 
- o Please report installation issues at http://code.google.com/p/ccnx-trace/issues/
+ o Please report installation issues at http://code.google.com/p/ndnx-trace/issues/

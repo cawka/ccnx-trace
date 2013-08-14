@@ -1,11 +1,11 @@
-bin_PROGRAMS =  ccn_traced ccntrace
+bin_PROGRAMS =  ndn_traced ndntrace
 
-ccn_traced_SOURCES = trace_server.c conf.h node_id.h
-ccn_traced_LDADD   = $(CCNX_LIBS) $(OPENSSL_LIBS) $(BOOST_LIBS)
-ccn_traced_LDFLAGS = $(CCNX_LDFLAGS) $(OPENSSL_LDFLAGS) $(BOOST_LDFLAGS)
-ccn_traced_CFLAGS  = $(CCNX_CFLAGS) $(OPENSSL_INCLUDES) $(BOOST_INCLUDES)
+ndn_traced_SOURCES = trace_server.c conf.h node_id.h
+ndn_traced_LDADD   = $(NDNX_LIBS) $(OPENSSL_LIBS) $(BOOST_LIBS)
+ndn_traced_LDFLAGS = $(NDNX_LDFLAGS) $(OPENSSL_LDFLAGS) $(BOOST_LDFLAGS)
+ndn_traced_CFLAGS  = $(NDNX_CFLAGS) $(OPENSSL_INCLUDES) $(BOOST_INCLUDES)
 
-ccntrace_SOURCES   = trace_client.c conf.h node_id.h
-ccntrace_LDADD     = $(CCNX_LIBS) $(OPENSSL_LIBS) $(BOOST_LIBS)
-ccntrace_LDFLAGS   = $(CCNX_LDFLAGS) $(OPENSSL_LDFLAGS) $(BOOST_LDFLAGS)
-ccntrace_CFLAGS    = $(CCNX_CFLAGS) $(OPENSSL_INCLUDES)
+ndntrace_SOURCES   = trace_client.c conf.h node_id.h
+ndntrace_LDADD     = $(NDNX_LIBS) $(OPENSSL_LIBS) $(BOOST_LIBS)
+ndntrace_LDFLAGS   = $(NDNX_LDFLAGS) $(OPENSSL_LDFLAGS) $(BOOST_LDFLAGS)
+ndntrace_CFLAGS    = $(NDNX_CFLAGS) $(OPENSSL_INCLUDES)

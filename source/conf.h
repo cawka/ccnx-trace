@@ -1,11 +1,11 @@
 #include "config.h"
 
-#define CLI_PROGRAM    "ccntrace"
+#define CLI_PROGRAM    "ndntrace"
 #define CLI_VERSION    VERSION
 
-#define SRV_PROGRAM    "ccn_traced"
+#define SRV_PROGRAM    "ndn_traced"
 #define SRV_VERSION    VERSION
 
-#define LOGFILE "ccn_traced.log"
+#define LOGFILE "ndn_traced.log"
 
-#define CCN_DIR CCNX_DIR "/bin/"
+#define NDN_DIR NDNX_DIR "/bin/"

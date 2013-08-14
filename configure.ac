@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT([ccnx-trace], [1.1.2], [susmit@cs.colostate.edu])
+AC_INIT([ndnx-trace], [1.1.2], [susmit@cs.colostate.edu])
 AC_CONFIG_SRCDIR([source/conf.h])
 AC_CONFIG_HEADERS([config.h])
 
@@ -12,7 +12,7 @@ AC_PROG_CC
 AM_INIT_AUTOMAKE
 AM_PROG_CC_C_O
 
-AX_CCNX([0.6.1],,[AC_MSG_ERROR([Required CCNx library not found])])
+AX_NDNX([0.6.1],,[AC_MSG_ERROR([Required NDNx library not found])])
 AX_CHECK_OPENSSL(,[AC_MSG_ERROR([Required OpenSSL not found])])
 
 # Checks for header files.
